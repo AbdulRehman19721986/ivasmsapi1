@@ -1,281 +1,781 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>IVAS OTP Dashboard | Abdul Rehman Rajpoot</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: #e2e8f0;
-            padding: 20px;
-        }
-        .container { max-width: 1400px; margin: 0 auto; }
-        .header { text-align: center; margin-bottom: 30px; }
-        .header h1 {
-            font-size: 2.5rem;
-            background: linear-gradient(135deg, #f97316, #dc2626);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
-        .header p { color: #94a3b8; }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .stat-card {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(10px);
-            border-radius: 16px;
-            padding: 20px;
-            text-align: center;
-            border: 1px solid #334155;
-        }
-        .stat-value { font-size: 2rem; font-weight: bold; color: #f97316; }
-        .stat-label { font-size: 0.9rem; color: #94a3b8; margin-top: 5px; }
-        .controls {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(10px);
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 30px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            align-items: center;
-            justify-content: space-between;
-        }
-        button {
-            background: linear-gradient(135deg, #f97316, #dc2626);
-            border: none;
-            padding: 8px 20px;
-            border-radius: 8px;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .refresh-control { display: flex; align-items: center; gap: 10px; }
-        .status-badge {
-            background: #1e293b;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-        }
-        .section {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(10px);
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 30px;
-            border: 1px solid #334155;
-        }
-        .section h2 { margin-bottom: 15px; font-size: 1.5rem; }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #334155;
-        }
-        th { color: #f97316; }
-        .message-list { max-height: 400px; overflow-y: auto; }
-        .message-card {
-            background: #1e293b;
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 12px;
-            border-left: 4px solid #f97316;
-        }
-        .message-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; color: #94a3b8; }
-        .message-sender { font-weight: bold; color: #f97316; }
-        .message-time { font-size: 0.8rem; }
-        .message-text { font-size: 1rem; word-break: break-word; }
-        .footer {
-            margin-top: 40px;
-            text-align: center;
-            padding: 20px;
-            border-top: 1px solid #334155;
-            font-size: 0.8rem;
-            color: #94a3b8;
-        }
-        .footer a { color: #f97316; text-decoration: none; }
-        .loading { text-align: center; padding: 20px; color: #94a3b8; }
-        @media (max-width: 768px) {
-            .header h1 { font-size: 1.8rem; }
-            .stat-value { font-size: 1.5rem; }
-            th, td { padding: 8px; font-size: 0.8rem; }
-        }
-    </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>IVAS SMS Dashboard – Abdul Rehman</title>
+<style>
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #0b1120;
+  --bg2:      #111827;
+  --bg3:      #1a2336;
+  --border:   #1f2d45;
+  --accent:   #f97316;
+  --accent2:  #fb923c;
+  --green:    #22c55e;
+  --red:      #ef4444;
+  --blue:     #3b82f6;
+  --yellow:   #eab308;
+  --text:     #e2e8f0;
+  --muted:    #64748b;
+  --card-r:   14px;
+}
+html { font-size: 15px; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+/* ── Layout ── */
+.app { display: flex; min-height: 100vh; }
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 240px;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+.sidebar-logo {
+  padding: 22px 20px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-logo h1 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: .3px;
+}
+.sidebar-logo p { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+
+.sidebar-nav { padding: 14px 10px; flex: 1; }
+.nav-label {
+  font-size: .65rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+  padding: 0 10px;
+  margin: 12px 0 6px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: .88rem;
+  color: var(--muted);
+  transition: all .18s;
+  text-decoration: none;
+}
+.nav-item:hover { background: var(--bg3); color: var(--text); }
+.nav-item.active { background: rgba(249,115,22,.12); color: var(--accent); font-weight: 600; }
+.nav-icon { width: 18px; text-align: center; font-size: 1rem; }
+
+.sidebar-footer {
+  padding: 14px 16px;
+  border-top: 1px solid var(--border);
+}
+.status-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  margin-right: 6px;
+  animation: pulse 2s infinite;
+}
+.status-dot.offline { background: var(--red); animation: none; }
+@keyframes pulse {
+  0%,100% { opacity: 1; }
+  50%      { opacity: .4; }
+}
+.sidebar-status { font-size: .75rem; color: var(--muted); }
+
+/* ── Main ── */
+.main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+/* ── Topbar ── */
+.topbar {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 0 26px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.topbar-title { font-weight: 700; font-size: 1rem; }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.badge {
+  background: rgba(249,115,22,.15);
+  color: var(--accent);
+  border: 1px solid rgba(249,115,22,.3);
+  border-radius: 20px;
+  padding: 3px 11px;
+  font-size: .73rem;
+  font-weight: 600;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: .82rem;
+  font-weight: 600;
+  transition: all .18s;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #fff;
+}
+.btn-primary:hover { opacity: .88; transform: translateY(-1px); }
+.btn-secondary {
+  background: var(--bg3);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: not-allowed; transform: none !important; }
+
+/* ── Content ── */
+.content { padding: 24px 26px; overflow-y: auto; flex: 1; }
+
+/* ── Page ── */
+.page { display: none; }
+.page.active { display: block; }
+
+/* ── Stats Grid ── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.stat-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--card-r);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .2s;
+}
+.stat-card:hover { border-color: var(--accent); }
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: var(--card-r) var(--card-r) 0 0;
+}
+.stat-icon { font-size: 1.4rem; margin-bottom: 10px; }
+.stat-value { font-size: 1.9rem; font-weight: 700; color: var(--accent); line-height: 1; }
+.stat-label { font-size: .73rem; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: .5px; }
+.stat-change { font-size: .72rem; margin-top: 5px; }
+.stat-change.up   { color: var(--green); }
+.stat-change.down { color: var(--red); }
+
+/* ── Section ── */
+.section {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--card-r);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.section-title {
+  font-size: .93rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-body { padding: 0; }
+
+/* ── Table ── */
+.table-wrap { overflow-x: auto; max-height: 420px; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+thead { position: sticky; top: 0; z-index: 2; }
+thead tr { background: var(--bg3); }
+th {
+  padding: 11px 16px;
+  text-align: left;
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+td {
+  padding: 11px 16px;
+  border-top: 1px solid var(--border);
+  vertical-align: middle;
+}
+tr:hover td { background: rgba(255,255,255,.025); }
+
+/* ── OTP Highlight ── */
+.otp-chip {
+  display: inline-block;
+  background: rgba(249,115,22,.15);
+  color: var(--accent);
+  border: 1px solid rgba(249,115,22,.35);
+  border-radius: 6px;
+  padding: 2px 9px;
+  font-weight: 700;
+  font-family: monospace;
+  font-size: .95rem;
+  letter-spacing: 2px;
+}
+.msg-text { max-width: 340px; word-break: break-word; line-height: 1.4; }
+.revenue-badge {
+  background: rgba(34,197,94,.12);
+  color: var(--green);
+  border-radius: 5px;
+  padding: 2px 8px;
+  font-size: .78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.number-chip {
+  font-family: monospace;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: .88rem;
+}
+
+/* ── Empty / Loading ── */
+.empty-state {
+  text-align: center;
+  padding: 52px 20px;
+  color: var(--muted);
+}
+.empty-state .icon { font-size: 2.5rem; margin-bottom: 10px; }
+.empty-state h3 { font-size: .95rem; margin-bottom: 4px; color: var(--text); }
+.empty-state p  { font-size: .8rem; }
+
+.skeleton {
+  background: linear-gradient(90deg, var(--bg3) 25%, var(--border) 50%, var(--bg3) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 6px;
+  height: 14px;
+  width: 100%;
+}
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+/* ── Alert ── */
+.alert {
+  padding: 12px 16px;
+  border-radius: 9px;
+  font-size: .83rem;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.alert-error   { background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.3); color: #fca5a5; }
+.alert-success { background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.3); color: #86efac; }
+.alert-warning { background: rgba(234,179,8,.12); border: 1px solid rgba(234,179,8,.3); color: #fde68a; }
+
+/* ── Auto-refresh toggle ── */
+.toggle { display: flex; align-items: center; gap: 8px; font-size: .8rem; color: var(--muted); cursor: pointer; }
+.toggle input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; }
+
+/* ── Live indicator ── */
+.live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(34,197,94,.12);
+  color: var(--green);
+  border: 1px solid rgba(34,197,94,.3);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: .7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 1.5s infinite; }
+
+/* ── Search ── */
+.search-box {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 12px;
+  color: var(--text);
+  font-size: .83rem;
+  width: 200px;
+  outline: none;
+  transition: border-color .2s;
+}
+.search-box:focus { border-color: var(--accent); }
+.search-box::placeholder { color: var(--muted); }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .sidebar { width: 56px; }
+  .sidebar-logo p, .nav-item span, .nav-label, .sidebar-footer { display: none; }
+  .nav-icon { font-size: 1.15rem; }
+  .nav-item { justify-content: center; padding: 10px; }
+  .content { padding: 16px; }
+  .topbar { padding: 0 16px; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Spinner ── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { display: inline-block; animation: spin .7s linear infinite; }
+</style>
 </head>
 <body>
-<div class="container">
-    <div class="header">
-        <h1>🔥 IVAS OTP Dashboard 🔥</h1>
-        <p>Real‑time OTP Monitoring | Powered by Abdul Rehman Rajpoot</p>
+<div class="app">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <h1>📡 IVAS SMS</h1>
+      <p>Premium Dashboard</p>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-label">Main</div>
+      <a class="nav-item active" data-page="dashboard" onclick="showPage('dashboard',this)">
+        <span class="nav-icon">🏠</span><span>Dashboard</span>
+      </a>
+      <a class="nav-item" data-page="live" onclick="showPage('live',this)">
+        <span class="nav-icon">⚡</span><span>Live SMS</span>
+      </a>
+      <a class="nav-item" data-page="received" onclick="showPage('received',this)">
+        <span class="nav-icon">📥</span><span>Received SMS</span>
+      </a>
+      <a class="nav-item" data-page="numbers" onclick="showPage('numbers',this)">
+        <span class="nav-icon">📱</span><span>My Numbers</span>
+      </a>
+    </div>
+    <div class="sidebar-footer">
+      <span class="status-dot" id="statusDot"></span>
+      <span class="sidebar-status" id="sidebarStatus">Connecting…</span>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="topbar-title" id="topbarTitle">Dashboard</div>
+      <div class="topbar-right">
+        <span id="livePill" class="live-pill" style="display:none">
+          <span class="live-dot"></span>LIVE
+        </span>
+        <label class="toggle">
+          <input type="checkbox" id="autoRefresh" checked/>
+          <span>Auto-refresh</span>
+        </label>
+        <button class="btn btn-primary" id="refreshBtn">
+          <span id="refreshIcon">🔄</span> Refresh
+        </button>
+      </div>
     </div>
 
-    <!-- Stats will be filled by JavaScript -->
-    <div class="stats-grid" id="statsGrid">
-        <div class="stat-card"><div class="stat-value" id="totalSMS">-</div><div class="stat-label">Total SMS</div></div>
-        <div class="stat-card"><div class="stat-value" id="paidSMS">-</div><div class="stat-label">Paid SMS</div></div>
-        <div class="stat-card"><div class="stat-value" id="unpaidSMS">-</div><div class="stat-label">Unpaid SMS</div></div>
-        <div class="stat-card"><div class="stat-value" id="revenue">-</div><div class="stat-label">Revenue (USD)</div></div>
-    </div>
+    <!-- Content -->
+    <div class="content">
+      <div id="globalAlert" style="display:none"></div>
 
-    <div class="controls">
-        <div class="refresh-control">
-            <button id="refreshBtn">🔄 Refresh Now</button>
-            <label><input type="checkbox" id="autoRefresh" checked> Auto-refresh (10s)</label>
+      <!-- ─── Dashboard Page ─── -->
+      <div class="page active" id="page-dashboard">
+        <div class="stats-grid" id="statCards">
+          <!-- Populated by JS -->
+          <div class="stat-card"><div class="skeleton" style="height:70px"></div></div>
+          <div class="stat-card"><div class="skeleton" style="height:70px"></div></div>
+          <div class="stat-card"><div class="skeleton" style="height:70px"></div></div>
+          <div class="stat-card"><div class="skeleton" style="height:70px"></div></div>
         </div>
-        <div class="status-badge" id="statusBadge">🟢 Live</div>
-    </div>
 
-    <div class="section">
-        <h2>📞 My Numbers</h2>
-        <div id="numbersList"><div class="loading">Loading numbers...</div></div>
-    </div>
+        <div class="section">
+          <div class="section-header">
+            <span class="section-title">⚡ Latest Live OTPs</span>
+            <span class="badge" id="liveCount">–</span>
+          </div>
+          <div class="section-body">
+            <div class="table-wrap">
+              <table id="dashLiveTable">
+                <thead><tr><th>From</th><th>OTP / Message</th><th>Time</th><th>Revenue</th></tr></thead>
+                <tbody id="dashLiveBody"><tr><td colspan="4"><div class="empty-state"><div class="skeleton"></div></div></td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
 
-    <div class="section">
-        <h2>📩 Received SMS (from /portal/sms/received)</h2>
-        <div id="receivedList"><div class="loading">Loading received messages...</div></div>
-    </div>
+        <div class="section">
+          <div class="section-header">
+            <span class="section-title">📥 Recent Received SMS</span>
+            <span class="badge" id="receivedCount">–</span>
+          </div>
+          <div class="section-body">
+            <div class="table-wrap">
+              <table id="dashRecvTable">
+                <thead><tr><th>From</th><th>Message</th><th>Time</th><th>Revenue</th></tr></thead>
+                <tbody id="dashRecvBody"><tr><td colspan="4"><div class="empty-state"><div class="skeleton"></div></div></td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <div class="section">
-        <h2>⚡ Live SMS (from /portal/live/my_sms)</h2>
-        <div id="liveList"><div class="loading">Loading live messages...</div></div>
-    </div>
+      <!-- ─── Live SMS Page ─── -->
+      <div class="page" id="page-live">
+        <div class="stats-grid" id="liveStats"></div>
+        <div class="section">
+          <div class="section-header">
+            <span class="section-title"><span class="live-dot"></span> &nbsp;Live SMS Feed</span>
+            <div style="display:flex;gap:10px;align-items:center">
+              <input class="search-box" id="liveSearch" placeholder="Search messages…" oninput="filterTable('liveBody',this.value)"/>
+              <span class="badge" id="liveTotalCount">–</span>
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>#</th><th>From</th><th>Message</th><th>Time</th><th>Revenue</th></tr></thead>
+                <tbody id="liveBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <div class="footer">
-        <p>👑 Developed by <strong>Abdul Rehman Rajpoot</strong> | 📞 <a href="https://wa.me/923009842133">+923009842133</a></p>
-        <p>🔗 <a href="https://chat.whatsapp.com/LhSmx2SeXX75r8I2bxsNDo" target="_blank">WhatsApp Group</a> | 
-        <a href="https://whatsapp.com/channel/0029VbCPnYf96H4SNehkev10" target="_blank">WhatsApp Channel</a> |
-        <a href="https://github.com/AbdulRehman19721986/REDXBOT-MD" target="_blank">GitHub</a> |
-        <a href="https://t.me/TeamRedxhacker2" target="_blank">Telegram</a> |
-        <a href="https://youtube.com/@rootmindtech" target="_blank">YouTube</a></p>
-        <p>⚡ Auto‑refresh every 10 seconds – new OTPs appear instantly.</p>
-    </div>
-</div>
+      <!-- ─── Received SMS Page ─── -->
+      <div class="page" id="page-received">
+        <div class="stats-grid" id="receivedStats"></div>
+        <div class="section">
+          <div class="section-header">
+            <span class="section-title">📥 All Received SMS</span>
+            <div style="display:flex;gap:10px;align-items:center">
+              <input class="search-box" id="recvSearch" placeholder="Search…" oninput="filterTable('recvBody',this.value)"/>
+              <span class="badge" id="recvTotalCount">–</span>
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>#</th><th>From</th><th>Message</th><th>Time</th><th>Revenue</th></tr></thead>
+                <tbody id="recvBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Numbers Page ─── -->
+      <div class="page" id="page-numbers">
+        <div class="section">
+          <div class="section-header">
+            <span class="section-title">📱 My Virtual Numbers</span>
+            <span class="badge" id="numbersCount">–</span>
+          </div>
+          <div class="section-body">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>#</th><th>Number</th><th>Details</th></tr></thead>
+                <tbody id="numbersBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
 
 <script>
-    let refreshInterval = null;
+// ─── State ───────────────────────────────────────────────────────────────────
+let cache       = {};
+let refreshTimer = null;
+let isLoading   = false;
+let currentPage = 'dashboard';
 
-    async function fetchAll() {
-        const res = await fetch('/api/all');
-        const data = await res.json();
-        if (data.error) {
-            document.getElementById('numbersList').innerHTML = `<div class="loading error">⚠️ ${data.error}</div>`;
-            document.getElementById('receivedList').innerHTML = `<div class="loading error">⚠️ ${data.error}</div>`;
-            document.getElementById('liveList').innerHTML = `<div class="loading error">⚠️ ${data.error}</div>`;
-            return;
-        }
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
 
-        // Numbers
-        const numbers = data.numbers;
-        if (numbers && numbers.length) {
-            let html = ' <thead> <th>Number</th><th>Details</th> </thead> <tbody>';
-            numbers.forEach(num => {
-                html += `  <td>${num.number}</td><td>${num.details.join(', ')}</td>  `;
-            });
-            html += '</tbody></table>';
-            document.getElementById('numbersList').innerHTML = html;
-        } else {
-            document.getElementById('numbersList').innerHTML = '<div class="loading">No numbers found.</div>';
-        }
+function extractOTP(text) {
+  if (!text) return null;
+  const m = text.match(/\b(\d{4,8})\b/);
+  return m ? m[1] : null;
+}
 
-        // Received SMS stats & messages
-        const received = data.received;
-        if (received) {
-            // Update stats (using received stats as primary)
-            document.getElementById('totalSMS').innerText = received.stats.count;
-            document.getElementById('paidSMS').innerText = received.stats.paid;
-            document.getElementById('unpaidSMS').innerText = received.stats.unpaid;
-            document.getElementById('revenue').innerText = received.stats.revenue;
+function renderMsg(text) {
+  if (!text) return '<span style="color:var(--muted)">–</span>';
+  const otp = extractOTP(text);
+  if (otp) {
+    const safe = text.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const highlighted = safe.replace(otp, `<span class="otp-chip">${otp}</span>`);
+    return `<span class="msg-text">${highlighted}</span>`;
+  }
+  return `<span class="msg-text">${text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>`;
+}
 
-            // Display messages
-            const recvMessages = received.messages;
-            if (recvMessages && recvMessages.length) {
-                let html = '';
-                recvMessages.forEach(msg => {
-                    html += `
-                        <div class="message-card">
-                            <div class="message-header">
-                                <span class="message-sender">📱 ${msg.sender}</span>
-                                <span class="message-time">🕒 ${msg.time}</span>
-                                <span>💰 ${msg.revenue} USD</span>
-                            </div>
-                            <div class="message-text">💬 ${msg.message}</div>
-                        </div>
-                    `;
-                });
-                document.getElementById('receivedList').innerHTML = html;
-            } else {
-                document.getElementById('receivedList').innerHTML = '<div class="loading">No received messages.</div>';
-            }
-        } else {
-            document.getElementById('receivedList').innerHTML = '<div class="loading error">Failed to load received SMS.</div>';
-        }
+function renderRevenue(r) {
+  if (!r || r === '0' || r === '') return '<span style="color:var(--muted)">–</span>';
+  return `<span class="revenue-badge">💰 ${r}</span>`;
+}
 
-        // Live SMS
-        const live = data.live;
-        if (live) {
-            const liveMessages = live.messages;
-            if (liveMessages && liveMessages.length) {
-                let html = '';
-                liveMessages.forEach(msg => {
-                    html += `
-                        <div class="message-card">
-                            <div class="message-header">
-                                <span class="message-sender">📱 ${msg.sender}</span>
-                                <span class="message-time">🕒 ${msg.time}</span>
-                                <span>💰 ${msg.revenue} USD</span>
-                            </div>
-                            <div class="message-text">💬 ${msg.message}</div>
-                        </div>
-                    `;
-                });
-                document.getElementById('liveList').innerHTML = html;
-            } else {
-                document.getElementById('liveList').innerHTML = '<div class="loading">No live messages.</div>';
-            }
-        } else {
-            document.getElementById('liveList').innerHTML = '<div class="loading error">Failed to load live SMS.</div>';
-        }
+function showAlert(type, msg) {
+  const el = $('globalAlert');
+  el.innerHTML = `<div class="alert alert-${type}"><span>${type==='error'?'❌':type==='success'?'✅':'⚠️'}</span>${msg}</div>`;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 5000);
+}
+
+function setLoading(on) {
+  isLoading = on;
+  const btn  = $('refreshBtn');
+  const icon = $('refreshIcon');
+  btn.disabled = on;
+  icon.className = on ? 'spin' : '';
+  icon.textContent = '🔄';
+}
+
+function updateSidebarStatus(ok) {
+  const dot  = $('statusDot');
+  const txt  = $('sidebarStatus');
+  const pill = $('livePill');
+  if (ok) {
+    dot.className = 'status-dot';
+    txt.textContent = 'Connected';
+    pill.style.display = 'inline-flex';
+  } else {
+    dot.className = 'status-dot offline';
+    txt.textContent = 'Auth Failed';
+    pill.style.display = 'none';
+  }
+}
+
+function filterTable(tbodyId, q) {
+  const rows = document.querySelectorAll(`#${tbodyId} tr`);
+  const lq   = q.toLowerCase();
+  rows.forEach(r => {
+    r.style.display = r.textContent.toLowerCase().includes(lq) ? '' : 'none';
+  });
+}
+
+// ─── Page switching ───────────────────────────────────────────────────────────
+function showPage(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  $(`page-${name}`).classList.add('active');
+  el.classList.add('active');
+  currentPage = name;
+  const titles = {dashboard:'Dashboard',live:'Live SMS',received:'Received SMS',numbers:'My Numbers'};
+  $('topbarTitle').textContent = titles[name] || name;
+}
+
+// ─── Render helpers ───────────────────────────────────────────────────────────
+function renderSmsRows(messages, limit) {
+  if (!messages || !messages.length) {
+    return `<tr><td colspan="5"><div class="empty-state">
+      <div class="icon">📭</div>
+      <h3>No messages</h3>
+      <p>Nothing here yet.</p>
+    </div></td></tr>`;
+  }
+  const list = limit ? messages.slice(0, limit) : messages;
+  return list.map((m, i) => `
+    <tr>
+      <td style="color:var(--muted);width:44px">${i+1}</td>
+      <td><span class="number-chip">${m.sender || '–'}</span></td>
+      <td>${renderMsg(m.message)}</td>
+      <td style="color:var(--muted);white-space:nowrap;font-size:.78rem">${m.time || '–'}</td>
+      <td>${renderRevenue(m.revenue)}</td>
+    </tr>`).join('');
+}
+
+function renderStatsCards(stats, fields) {
+  return fields.map(f => `
+    <div class="stat-card">
+      <div class="stat-icon">${f.icon}</div>
+      <div class="stat-value">${stats[f.key] || '0'}</div>
+      <div class="stat-label">${f.label}</div>
+    </div>`).join('');
+}
+
+// ─── Main fetch ───────────────────────────────────────────────────────────────
+async function fetchAll() {
+  if (isLoading) return;
+  setLoading(true);
+  try {
+    const res  = await fetch('/api/all');
+    const data = await res.json();
+
+    if (data.error) {
+      showAlert('error', `API error: ${data.error}`);
+      updateSidebarStatus(false);
+      return;
     }
 
-    async function refreshDashboard() {
-        const status = document.getElementById('statusBadge');
-        status.innerHTML = '🟡 Updating...';
-        await fetchAll();
-        status.innerHTML = '🟢 Live';
-    }
+    cache = data;
+    updateSidebarStatus(true);
+    renderDashboard(data);
+    renderLivePage(data.live);
+    renderReceivedPage(data.received);
+    renderNumbersPage(data.numbers);
 
-    function startAutoRefresh() {
-        if (refreshInterval) clearInterval(refreshInterval);
-        refreshInterval = setInterval(() => {
-            if (document.getElementById('autoRefresh').checked) {
-                refreshDashboard();
-            }
-        }, 10000);
-    }
+  } catch (e) {
+    showAlert('error', `Network error: ${e.message}`);
+    updateSidebarStatus(false);
+  } finally {
+    setLoading(false);
+  }
+}
 
-    document.getElementById('refreshBtn').addEventListener('click', refreshDashboard);
-    document.getElementById('autoRefresh').addEventListener('change', () => {
-        if (document.getElementById('autoRefresh').checked) {
-            startAutoRefresh();
-        } else {
-            if (refreshInterval) clearInterval(refreshInterval);
-        }
-    });
+// ─── Render Dashboard ─────────────────────────────────────────────────────────
+function renderDashboard(data) {
+  const live = data.live || {};
+  const recv = data.received || {};
+  const nums = data.numbers || [];
 
-    refreshDashboard();
-    startAutoRefresh();
+  const ls = live.stats || {};
+  const rs = recv.stats || {};
+
+  $('statCards').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-icon">⚡</div>
+      <div class="stat-value">${ls.total || '0'}</div>
+      <div class="stat-label">Live Messages</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">📥</div>
+      <div class="stat-value">${rs.count || '0'}</div>
+      <div class="stat-label">Total Received</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">💰</div>
+      <div class="stat-value">${ls.revenue || rs.revenue || '0'}</div>
+      <div class="stat-label">Revenue (USD)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">📱</div>
+      <div class="stat-value">${nums.length}</div>
+      <div class="stat-label">Active Numbers</div>
+    </div>`;
+
+  // Live table (top 10)
+  const lm = live.messages || [];
+  $('liveCount').textContent = lm.length;
+  $('dashLiveBody').innerHTML = renderSmsRows(lm, 10);
+
+  // Received table (top 10)
+  const rm = recv.messages || [];
+  $('receivedCount').textContent = rm.length;
+  $('dashRecvBody').innerHTML = renderSmsRows(rm, 10);
+}
+
+// ─── Render Live Page ─────────────────────────────────────────────────────────
+function renderLivePage(live) {
+  if (!live) return;
+  const s = live.stats || {};
+  $('liveStats').innerHTML = renderStatsCards(s, [
+    {key:'total',   icon:'📨', label:'Total Live'},
+    {key:'paid',    icon:'✅', label:'Paid'},
+    {key:'unpaid',  icon:'⏳', label:'Unpaid'},
+    {key:'revenue', icon:'💰', label:'Revenue USD'},
+  ]);
+  const msgs = live.messages || [];
+  $('liveTotalCount').textContent = msgs.length;
+  $('liveBody').innerHTML = renderSmsRows(msgs);
+}
+
+// ─── Render Received Page ─────────────────────────────────────────────────────
+function renderReceivedPage(recv) {
+  if (!recv) return;
+  const s = recv.stats || {};
+  $('receivedStats').innerHTML = renderStatsCards(s, [
+    {key:'count',   icon:'📬', label:'Total Received'},
+    {key:'paid',    icon:'✅', label:'Paid'},
+    {key:'unpaid',  icon:'⏳', label:'Unpaid'},
+    {key:'revenue', icon:'💰', label:'Revenue USD'},
+  ]);
+  const msgs = recv.messages || [];
+  $('recvTotalCount').textContent = msgs.length;
+  $('recvBody').innerHTML = renderSmsRows(msgs);
+}
+
+// ─── Render Numbers Page ──────────────────────────────────────────────────────
+function renderNumbersPage(numbers) {
+  if (!numbers) return;
+  $('numbersCount').textContent = numbers.length;
+  if (!numbers.length) {
+    $('numbersBody').innerHTML = `<tr><td colspan="3"><div class="empty-state">
+      <div class="icon">📵</div><h3>No numbers found</h3>
+      <p>Could not parse any numbers from IVAS.</p>
+    </div></td></tr>`;
+    return;
+  }
+  $('numbersBody').innerHTML = numbers.map((n, i) => `
+    <tr>
+      <td style="color:var(--muted)">${i+1}</td>
+      <td><span class="number-chip">📱 ${n.number}</span></td>
+      <td style="color:var(--muted);font-size:.8rem">${(n.details||[]).join(' &nbsp;|&nbsp; ') || '–'}</td>
+    </tr>`).join('');
+}
+
+// ─── Auto-refresh ─────────────────────────────────────────────────────────────
+function startAutoRefresh() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(() => {
+    if ($('autoRefresh').checked) fetchAll();
+  }, 12000);
+}
+
+$('refreshBtn').addEventListener('click', fetchAll);
+$('autoRefresh').addEventListener('change', e => {
+  if (e.target.checked) startAutoRefresh();
+  else clearInterval(refreshTimer);
+});
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+fetchAll();
+startAutoRefresh();
 </script>
 </body>
 </html>
