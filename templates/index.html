@@ -2,28 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>IVAS SMS Dashboard | Abdul Rehman Rajpoot</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             color: #e2e8f0;
             padding: 20px;
         }
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 30px; }
         .header h1 {
             font-size: 2.5rem;
             background: linear-gradient(135deg, #f97316, #dc2626);
@@ -32,9 +22,7 @@
             color: transparent;
             margin-bottom: 10px;
         }
-        .header p {
-            color: #94a3b8;
-        }
+        .header p { color: #94a3b8; }
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -50,20 +38,9 @@
             border: 1px solid #334155;
             transition: transform 0.2s;
         }
-        .stat-card:hover {
-            transform: translateY(-5px);
-            border-color: #f97316;
-        }
-        .stat-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #f97316;
-        }
-        .stat-label {
-            font-size: 0.9rem;
-            color: #94a3b8;
-            margin-top: 5px;
-        }
+        .stat-card:hover { transform: translateY(-5px); border-color: #f97316; }
+        .stat-value { font-size: 2rem; font-weight: bold; color: #f97316; }
+        .stat-label { font-size: 0.9rem; color: #94a3b8; margin-top: 5px; }
         .controls {
             background: rgba(30, 41, 59, 0.7);
             backdrop-filter: blur(10px);
@@ -76,16 +53,8 @@
             align-items: flex-end;
             border: 1px solid #334155;
         }
-        .control-group {
-            flex: 1;
-            min-width: 150px;
-        }
-        .control-group label {
-            display: block;
-            font-size: 0.8rem;
-            margin-bottom: 5px;
-            color: #94a3b8;
-        }
+        .control-group { flex: 1; min-width: 150px; }
+        .control-group label { display: block; font-size: 0.8rem; margin-bottom: 5px; color: #94a3b8; }
         .control-group input, .control-group select {
             width: 100%;
             padding: 8px 12px;
@@ -105,17 +74,9 @@
             cursor: pointer;
             transition: opacity 0.2s;
         }
-        button:hover {
-            opacity: 0.9;
-        }
-        .refresh-control {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .refresh-control span {
-            font-size: 0.8rem;
-        }
+        button:hover { opacity: 0.9; }
+        .refresh-control { display: flex; align-items: center; gap: 10px; }
+        .refresh-control span { font-size: 0.8rem; }
         .messages {
             background: rgba(30, 41, 59, 0.7);
             backdrop-filter: blur(10px);
@@ -123,14 +84,8 @@
             padding: 20px;
             border: 1px solid #334155;
         }
-        .messages h2 {
-            margin-bottom: 15px;
-            font-size: 1.5rem;
-        }
-        .message-list {
-            max-height: 500px;
-            overflow-y: auto;
-        }
+        .messages h2 { margin-bottom: 15px; font-size: 1.5rem; }
+        .message-list { max-height: 500px; overflow-y: auto; }
         .message-card {
             background: #1e293b;
             border-radius: 12px;
@@ -139,31 +94,11 @@
             border-left: 4px solid #f97316;
             transition: all 0.2s;
         }
-        .message-card:hover {
-            background: #2d3a4f;
-            transform: translateX(5px);
-        }
-        .message-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 0.9rem;
-            color: #94a3b8;
-        }
-        .message-phone {
-            font-weight: bold;
-            color: #f97316;
-        }
-        .message-range {
-            background: #0f172a;
-            padding: 2px 8px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-        }
-        .message-text {
-            font-size: 1rem;
-            word-break: break-word;
-        }
+        .message-card:hover { background: #2d3a4f; transform: translateX(5px); }
+        .message-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; color: #94a3b8; }
+        .message-phone { font-weight: bold; color: #f97316; }
+        .message-range { background: #0f172a; padding: 2px 8px; border-radius: 20px; font-size: 0.75rem; }
+        .message-text { font-size: 1rem; word-break: break-word; }
         .footer {
             margin-top: 40px;
             text-align: center;
@@ -172,38 +107,19 @@
             font-size: 0.8rem;
             color: #94a3b8;
         }
-        .footer a {
-            color: #f97316;
-            text-decoration: none;
-        }
-        .footer a:hover {
-            text-decoration: underline;
-        }
-        .status {
-            background: #1e293b;
-            border-radius: 8px;
-            padding: 8px 15px;
-            display: inline-block;
-            font-size: 0.8rem;
-            margin-bottom: 10px;
-        }
-        .status.success {
-            color: #4ade80;
-        }
-        .status.error {
-            color: #f87171;
-        }
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #94a3b8;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        .auto-refresh-badge {
-            animation: pulse 1.5s infinite;
+        .footer a { color: #f97316; text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+        .status { background: #1e293b; border-radius: 8px; padding: 8px 15px; display: inline-block; font-size: 0.8rem; margin-bottom: 10px; }
+        .status.success { color: #4ade80; }
+        .status.error { color: #f87171; }
+        .loading { text-align: center; padding: 20px; color: #94a3b8; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .auto-refresh-badge { animation: pulse 1.5s infinite; }
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.8rem; }
+            .stat-value { font-size: 1.5rem; }
+            .controls { flex-direction: column; align-items: stretch; }
+            .refresh-control { justify-content: space-between; }
         }
     </style>
 </head>
@@ -236,18 +152,14 @@
         </div>
         <div class="control-group refresh-control">
             <button id="refreshBtn">🔄 Refresh</button>
-            <label>
-                <input type="checkbox" id="autoRefresh" checked> Auto-refresh
-            </label>
+            <label><input type="checkbox" id="autoRefresh" checked> Auto-refresh</label>
             <span id="autoRefreshTimer" class="auto-refresh-badge"></span>
         </div>
     </div>
 
     <div class="messages">
         <h2>📩 Incoming OTP Messages</h2>
-        <div id="messageList" class="message-list">
-            <div class="loading">Loading OTPs...</div>
-        </div>
+        <div id="messageList" class="message-list"><div class="loading">Loading OTPs...</div></div>
     </div>
 
     <div class="footer">
@@ -263,20 +175,16 @@
 
 <script>
     let refreshInterval = null;
-    let currentData = [];
-
     function updateDashboard() {
         const fromDate = document.getElementById('fromDate').value;
         const toDate = document.getElementById('toDate').value;
         const limit = document.getElementById('limit').value;
-
         let url = '/api/sms?';
         if (fromDate) url += `date=${encodeURIComponent(fromDate)}&`;
         else {
-            // Default to today
             const today = new Date();
-            const dd = String(today.getDate()).padStart(2, '0');
-            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2,'0');
+            const mm = String(today.getMonth()+1).padStart(2,'0');
             const yyyy = today.getFullYear();
             url += `date=${dd}/${mm}/${yyyy}&`;
         }
@@ -287,22 +195,20 @@
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
-                    showError(data.error);
+                    document.getElementById('messageList').innerHTML = `<div class="loading error">⚠️ ${data.error}</div>`;
                     return;
                 }
-                // Update stats
                 document.getElementById('countSMS').innerText = data.sms_stats.count_sms;
                 document.getElementById('paidSMS').innerText = data.sms_stats.paid_sms;
                 document.getElementById('unpaidSMS').innerText = data.sms_stats.unpaid_sms;
                 document.getElementById('revenue').innerText = data.sms_stats.revenue;
 
-                // Update messages
-                const otpMessages = data.otp_messages;
-                if (otpMessages.length === 0) {
+                const otps = data.otp_messages;
+                if (otps.length === 0) {
                     document.getElementById('messageList').innerHTML = '<div class="loading">No OTPs found for this period.</div>';
                 } else {
                     let html = '';
-                    otpMessages.forEach(msg => {
+                    otps.forEach(msg => {
                         html += `
                             <div class="message-card">
                                 <div class="message-header">
@@ -315,16 +221,10 @@
                     });
                     document.getElementById('messageList').innerHTML = html;
                 }
-                currentData = otpMessages;
             })
             .catch(err => {
-                showError('Failed to fetch data: ' + err.message);
+                document.getElementById('messageList').innerHTML = `<div class="loading error">⚠️ Network error: ${err.message}</div>`;
             });
-    }
-
-    function showError(msg) {
-        const messageList = document.getElementById('messageList');
-        messageList.innerHTML = `<div class="loading error">⚠️ ${msg}</div>`;
     }
 
     function startAutoRefresh() {
@@ -334,7 +234,7 @@
                 updateDashboard();
                 updateTimerDisplay();
             }
-        }, 10000); // every 10 seconds
+        }, 10000);
         updateTimerDisplay();
     }
 
@@ -347,23 +247,17 @@
         }
     }
 
-    document.getElementById('refreshBtn').addEventListener('click', () => {
-        updateDashboard();
-    });
-
+    document.getElementById('refreshBtn').addEventListener('click', updateDashboard);
     document.getElementById('autoRefresh').addEventListener('change', () => {
-        if (document.getElementById('autoRefresh').checked) {
-            startAutoRefresh();
-        } else {
-            if (refreshInterval) clearInterval(refreshInterval);
-            updateTimerDisplay();
-        }
+        if (document.getElementById('autoRefresh').checked) startAutoRefresh();
+        else if (refreshInterval) clearInterval(refreshInterval);
+        updateTimerDisplay();
     });
 
-    // Initial load and set default date
+    // Set today's date as default
     const today = new Date();
-    const dd = String(today.getDate()).padStart(2, '0');
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2,'0');
+    const mm = String(today.getMonth()+1).padStart(2,'0');
     const yyyy = today.getFullYear();
     document.getElementById('fromDate').value = `${dd}/${mm}/${yyyy}`;
     updateDashboard();
