@@ -34,7 +34,7 @@ class IVASAutoClient:
         """Perform login using email and password, retrieve session cookies and CSRF token."""
         logger.info("Attempting login with provided credentials...")
         try:
-            # First get the login page to capture any hidden tokens
+            # 1. Get login page to extract CSRF token
             resp = self.scraper.get(f"{self.base_url}/login")
             if resp.status_code != 200:
                 logger.error(f"Failed to reach login page: {resp.status_code}")
@@ -42,32 +42,43 @@ class IVASAutoClient:
 
             soup = BeautifulSoup(resp.text, 'html.parser')
             csrf_token = soup.find('input', {'name': '_token'})
-            csrf_token = csrf_token['value'] if csrf_token else ''
+            if not csrf_token:
+                logger.error("No CSRF token found on login page.")
+                return False
+            csrf_token = csrf_token['value']
 
-            # Prepare login payload
+            # 2. Post login data
             payload = {
                 '_token': csrf_token,
                 'email': self.email,
                 'password': self.password,
                 'remember': '1'
             }
+            login_resp = self.scraper.post(f"{self.base_url}/login", data=payload, allow_redirects=True)
+            # After login, we should be redirected to dashboard or portal
+            if login_resp.status_code != 200:
+                logger.error(f"Login POST returned {login_resp.status_code}")
+                return False
 
-            # Post login
-            login_resp = self.scraper.post(f"{self.base_url}/login", data=payload, allow_redirects=False)
-            if login_resp.status_code in [302, 200]:
-                # Follow redirect to dashboard
-                dashboard_resp = self.scraper.get(f"{self.base_url}/dashboard")
-                if dashboard_resp.status_code == 200:
-                    # Extract CSRF token from dashboard for later use
-                    soup = BeautifulSoup(dashboard_resp.text, 'html.parser')
-                    token_input = soup.find('input', {'name': '_token'})
-                    if token_input:
-                        self.csrf_token = token_input['value']
-                    self.logged_in = True
-                    logger.info("Login successful.")
-                    return True
-            logger.error("Login failed – wrong credentials or login endpoint changed.")
-            return False
+            # 3. Verify we are logged in by accessing a protected page
+            dashboard_resp = self.scraper.get(f"{self.base_url}/dashboard")
+            if dashboard_resp.status_code != 200:
+                logger.error("Failed to access dashboard after login.")
+                return False
+
+            # 4. Extract CSRF token from dashboard for later use
+            soup = BeautifulSoup(dashboard_resp.text, 'html.parser')
+            token_input = soup.find('input', {'name': '_token'})
+            if token_input:
+                self.csrf_token = token_input['value']
+                logger.info("CSRF token extracted.")
+            else:
+                logger.warning("No CSRF token found on dashboard; proceeding anyway.")
+
+            self.logged_in = True
+            logger.info("Login successful.")
+            return True
+
         except Exception as e:
             logger.error(f"Login error: {e}")
             return False
@@ -95,7 +106,7 @@ class IVASAutoClient:
 
         soup = BeautifulSoup(resp.text, 'html.parser')
         numbers = []
-        # The numbers are usually in a table with rows like <tr><td>+1234567890</td><td>...</td></tr>
+        # Try table rows first
         rows = soup.select("table tbody tr")
         if not rows:
             rows = soup.select("table tr")
@@ -103,11 +114,20 @@ class IVASAutoClient:
             cells = row.find_all("td")
             if len(cells) >= 2:
                 number = cells[0].get_text(strip=True)
-                # Additional details may be in other cells
-                numbers.append({
-                    'number': number,
-                    'details': [c.get_text(strip=True) for c in cells[1:]]
-                })
+                # Filter out empty or header rows
+                if number and not number.lower().startswith('number'):
+                    numbers.append({
+                        'number': number,
+                        'details': [c.get_text(strip=True) for c in cells[1:]]
+                    })
+        # If no table found, try looking for divs with numbers (fallback)
+        if not numbers:
+            # Look for any element that looks like a phone number (contains '+')
+            potential_numbers = soup.find_all(text=re.compile(r'\+?\d{10,}'))
+            for txt in potential_numbers:
+                txt = txt.strip()
+                if re.match(r'^\+?\d{10,}$', txt):
+                    numbers.append({'number': txt, 'details': []})
         logger.info(f"Found {len(numbers)} numbers.")
         return numbers
 
@@ -122,18 +142,24 @@ class IVASAutoClient:
 
         soup = BeautifulSoup(resp.text, 'html.parser')
 
-        # Extract statistics (may appear in a stats bar)
-        stats = {}
-        # Try to find the totals – adjust selectors based on actual page
-        total_span = soup.find(id="CountSMS") or soup.find(string=re.compile(r"Total SMS"))
-        paid_span = soup.find(id="PaidSMS")
-        unpaid_span = soup.find(id="UnpaidSMS")
-        revenue_span = soup.find(id="RevenueSMS")
-
-        stats['total'] = total_span.get_text(strip=True) if total_span else '0'
-        stats['paid'] = paid_span.get_text(strip=True) if paid_span else '0'
-        stats['unpaid'] = unpaid_span.get_text(strip=True) if unpaid_span else '0'
-        stats['revenue'] = revenue_span.get_text(strip=True).replace(' USD', '') if revenue_span else '0'
+        # Extract statistics – try common IDs
+        stats = {
+            'total': '0',
+            'paid': '0',
+            'unpaid': '0',
+            'revenue': '0'
+        }
+        for sid, key in [('CountSMS', 'total'), ('PaidSMS', 'paid'), ('UnpaidSMS', 'unpaid'), ('RevenueSMS', 'revenue')]:
+            elem = soup.find(id=sid)
+            if elem:
+                val = elem.get_text(strip=True).replace(' USD', '').replace(',', '')
+                stats[key] = val
+        # If not found, try to extract from text
+        if stats['total'] == '0':
+            text = soup.get_text()
+            match = re.search(r'Total SMS[\s:]*(\d+)', text, re.I)
+            if match:
+                stats['total'] = match.group(1)
 
         # Parse message table
         messages = []
@@ -153,6 +179,21 @@ class IVASAutoClient:
                         'message': message,
                         'time': time_str,
                         'revenue': revenue
+                    })
+        # Fallback: look for divs with message content (some IVAS versions use divs)
+        if not messages:
+            message_divs = soup.select(".message-item, .sms-item, .otp-item")
+            for div in message_divs:
+                sender = div.select_one(".sender, .from") or div.select_one(".col-3")
+                message = div.select_one(".message, .text") or div.select_one(".col-9")
+                time = div.select_one(".time, .date") or div.select_one(".col-2")
+                revenue = div.select_one(".revenue, .price") or div.select_one(".col-2")
+                if sender and message:
+                    messages.append({
+                        'sender': sender.get_text(strip=True),
+                        'message': message.get_text(strip=True),
+                        'time': time.get_text(strip=True) if time else '',
+                        'revenue': revenue.get_text(strip=True) if revenue else ''
                     })
         logger.info(f"Fetched {len(messages)} live SMS messages.")
         return {
@@ -195,6 +236,20 @@ def api_live():
     if live_data is None:
         return jsonify({'error': 'Could not fetch live SMS'}), 500
     return jsonify(live_data)
+
+# Debug endpoint: return raw HTML of any page (for troubleshooting)
+@app.route('/debug/html')
+def debug_html():
+    page = request.args.get('page', 'dashboard')
+    if not client.ensure_login():
+        return "Not logged in", 401
+    if page == 'numbers':
+        resp = client.scraper.get(f"{client.base_url}/portal/numbers")
+    elif page == 'live':
+        resp = client.scraper.get(f"{client.base_url}/portal/live/my_sms")
+    else:
+        resp = client.scraper.get(f"{client.base_url}/dashboard")
+    return resp.text
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
