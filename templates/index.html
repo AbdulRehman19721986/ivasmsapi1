@@ -5,289 +5,62 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>IVAS OTP Dashboard | Professional 3D</title>
     <style>
-        /* Reset & Base */
+        /* same as before, but ensure modal scrollable */
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Poppins', 'Segoe UI', sans-serif;
-            background: #0a0c15;
-            color: #eef2ff;
-            overflow-x: hidden;
-            min-height: 100vh;
-        }
-        /* Three.js Canvas */
-        #bg-canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            pointer-events: none;
-        }
-        /* Content Overlay */
-        .app-container {
-            position: relative;
-            z-index: 10;
-            backdrop-filter: blur(8px);
-            background: rgba(10, 12, 21, 0.65);
-            min-height: 100vh;
-            padding: 1.5rem;
-        }
-        /* Header */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            padding-bottom: 1rem;
-        }
-        .logo h1 {
-            font-size: 1.6rem;
-            background: linear-gradient(135deg, #f97316, #ff9a4a);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
-        .logo p {
-            font-size: 0.75rem;
-            color: #94a3b8;
-        }
-        .status-badge {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-        .dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #22c55e;
-            box-shadow: 0 0 6px #22c55e;
-            animation: pulse 2s infinite;
-        }
-        .dot.off {
-            background: #ef4444;
-            box-shadow: none;
-            animation: none;
-        }
+        body { font-family: 'Poppins', 'Segoe UI', sans-serif; background: #0a0c15; color: #eef2ff; overflow-x: hidden; min-height: 100vh; }
+        #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+        .app-container { position: relative; z-index: 10; backdrop-filter: blur(8px); background: rgba(10, 12, 21, 0.65); min-height: 100vh; padding: 1.5rem; }
+        .header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; }
+        .logo h1 { font-size: 1.6rem; background: linear-gradient(135deg, #f97316, #ff9a4a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .logo p { font-size: 0.75rem; color: #94a3b8; }
+        .status-badge { display: flex; align-items: center; gap: 0.75rem; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e; animation: pulse 2s infinite; }
+        .dot.off { background: #ef4444; box-shadow: none; animation: none; }
         @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
-        /* Announcement Bar */
-        .announcement-bar {
-            background: rgba(249,115,22,0.12);
-            border-left: 4px solid #f97316;
-            padding: 0.7rem 1rem;
-            border-radius: 12px;
-            margin-bottom: 1.5rem;
-            font-size: 0.85rem;
-            backdrop-filter: blur(4px);
-        }
-        /* Tab Buttons */
-        .tabs {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            margin-bottom: 1.5rem;
-        }
-        .tab-btn {
-            background: rgba(30, 33, 48, 0.7);
-            border: none;
-            padding: 0.6rem 1.2rem;
-            border-radius: 40px;
-            color: #cbd5e1;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            backdrop-filter: blur(4px);
-        }
-        .tab-btn.active {
-            background: #f97316;
-            color: white;
-            box-shadow: 0 0 12px rgba(249,115,22,0.4);
-        }
-        /* Cards Grid */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        .stat-card {
-            background: rgba(15, 20, 30, 0.7);
-            backdrop-filter: blur(8px);
-            border-radius: 20px;
-            padding: 1rem;
-            border: 1px solid rgba(255,255,255,0.08);
-            transition: transform 0.2s;
-        }
+        .announcement-bar { background: rgba(249,115,22,0.12); border-left: 4px solid #f97316; padding: 0.7rem 1rem; border-radius: 12px; margin-bottom: 1.5rem; font-size: 0.85rem; backdrop-filter: blur(4px); }
+        .tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+        .tab-btn { background: rgba(30, 33, 48, 0.7); border: none; padding: 0.6rem 1.2rem; border-radius: 40px; color: #cbd5e1; font-weight: 500; cursor: pointer; transition: all 0.2s ease; backdrop-filter: blur(4px); }
+        .tab-btn.active { background: #f97316; color: white; box-shadow: 0 0 12px rgba(249,115,22,0.4); }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: rgba(15, 20, 30, 0.7); backdrop-filter: blur(8px); border-radius: 20px; padding: 1rem; border: 1px solid rgba(255,255,255,0.08); transition: transform 0.2s; }
         .stat-card:hover { transform: translateY(-3px); background: rgba(20, 27, 40, 0.8); }
         .stat-value { font-size: 2rem; font-weight: 700; color: #f97316; margin-top: 0.25rem; }
         .stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; }
-        /* Tables */
-        .section-card {
-            background: rgba(15, 20, 30, 0.7);
-            backdrop-filter: blur(8px);
-            border-radius: 20px;
-            margin-bottom: 1.5rem;
-            overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.08);
-        }
-        .section-header {
-            padding: 1rem 1.2rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }
-        .section-title {
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .table-wrapper {
-            overflow-x: auto;
-            max-height: 450px;
-            overflow-y: auto;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.8rem;
-        }
-        th, td {
-            padding: 0.8rem 1rem;
-            text-align: left;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-        th {
-            background: rgba(0,0,0,0.3);
-            font-weight: 600;
-            color: #cbd5e1;
-        }
+        .section-card { background: rgba(15, 20, 30, 0.7); backdrop-filter: blur(8px); border-radius: 20px; margin-bottom: 1.5rem; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); }
+        .section-header { padding: 1rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+        .section-title { font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+        .table-wrapper { overflow-x: auto; max-height: 450px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        th, td { padding: 0.8rem 1rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        th { background: rgba(0,0,0,0.3); font-weight: 600; color: #cbd5e1; }
         tr:hover td { background: rgba(255,255,255,0.03); }
-        .num-chip {
-            font-family: monospace;
-            background: rgba(249,115,22,0.2);
-            padding: 0.2rem 0.6rem;
-            border-radius: 6px;
-            font-size: 0.75rem;
-        }
-        .otp-chip {
-            background: #f97316;
-            color: white;
-            padding: 0.2rem 0.6rem;
-            border-radius: 20px;
-            font-family: monospace;
-            font-weight: bold;
-        }
-        .btn {
-            background: rgba(249,115,22,0.9);
-            border: none;
-            padding: 0.4rem 1rem;
-            border-radius: 30px;
-            color: white;
-            cursor: pointer;
-            font-size: 0.7rem;
-            transition: 0.2s;
-        }
-        .btn-outline {
-            background: transparent;
-            border: 1px solid #f97316;
-            color: #f97316;
-        }
-        .btn-outline:hover {
-            background: #f97316;
-            color: white;
-        }
-        /* Number Grid */
-        .numbers-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-            gap: 0.8rem;
-            padding: 1rem;
-        }
-        .number-card {
-            background: rgba(20, 27, 40, 0.6);
-            border-radius: 16px;
-            padding: 0.8rem;
-            backdrop-filter: blur(4px);
-            transition: all 0.2s;
-        }
+        .num-chip { font-family: monospace; background: rgba(249,115,22,0.2); padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.75rem; }
+        .otp-chip { background: #f97316; color: white; padding: 0.2rem 0.6rem; border-radius: 20px; font-family: monospace; font-weight: bold; display: inline-block; max-width: 300px; overflow-x: auto; white-space: normal; word-break: break-word; }
+        .btn { background: rgba(249,115,22,0.9); border: none; padding: 0.4rem 1rem; border-radius: 30px; color: white; cursor: pointer; font-size: 0.7rem; transition: 0.2s; }
+        .btn-outline { background: transparent; border: 1px solid #f97316; color: #f97316; }
+        .btn-outline:hover { background: #f97316; color: white; }
+        .numbers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 0.8rem; padding: 1rem; }
+        .number-card { background: rgba(20, 27, 40, 0.6); border-radius: 16px; padding: 0.8rem; backdrop-filter: blur(4px); transition: all 0.2s; }
         .number-card:hover { background: rgba(30, 40, 55, 0.8); transform: translateY(-2px); }
-        .number {
-            font-family: monospace;
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: #f97316;
-        }
-        .range-tag {
-            font-size: 0.65rem;
-            color: #94a3b8;
-            margin-top: 0.2rem;
-        }
-        /* Admin Panel Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(8px);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-content {
-            background: #0f1420;
-            border-radius: 24px;
-            width: 90%;
-            max-width: 450px;
-            padding: 1.5rem;
-            border: 1px solid #f97316;
-            box-shadow: 0 20px 35px rgba(0,0,0,0.4);
-        }
-        .modal input, .modal textarea {
-            width: 100%;
-            background: #1a1f2e;
-            border: 1px solid #2d3348;
-            padding: 0.7rem;
-            border-radius: 12px;
-            color: white;
-            margin: 0.5rem 0;
-        }
-        .modal button {
-            margin-top: 0.5rem;
-            width: 100%;
-            background: #f97316;
-            border: none;
-            padding: 0.7rem;
-            border-radius: 12px;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .close-btn {
-            background: transparent;
-            border: none;
-            float: right;
-            font-size: 1.2rem;
-            cursor: pointer;
-            color: #94a3b8;
-        }
-        /* Scrollbar */
+        .number { font-family: monospace; font-size: 0.9rem; font-weight: 600; color: #f97316; }
+        .range-tag { font-size: 0.65rem; color: #94a3b8; margin-top: 0.2rem; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: #0f1420; border-radius: 24px; width: 90%; max-width: 550px; max-height: 80vh; overflow-y: auto; padding: 1.5rem; border: 1px solid #f97316; box-shadow: 0 20px 35px rgba(0,0,0,0.4); }
+        .modal input, .modal textarea, .modal select { width: 100%; background: #1a1f2e; border: 1px solid #2d3348; padding: 0.7rem; border-radius: 12px; color: white; margin: 0.5rem 0; }
+        .modal button { margin-top: 0.5rem; width: 100%; background: #f97316; border: none; padding: 0.7rem; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; }
+        .close-btn { background: transparent; border: none; float: right; font-size: 1.2rem; cursor: pointer; color: #94a3b8; }
+        .admin-number-list { margin-top: 1rem; max-height: 200px; overflow-y: auto; }
+        .admin-number-item { display: flex; justify-content: space-between; align-items: center; background: #1a1f2e; padding: 0.5rem; border-radius: 8px; margin-bottom: 0.5rem; }
+        .admin-number-item span { font-family: monospace; }
+        .delete-number { background: #ef4444; border: none; padding: 0.2rem 0.6rem; border-radius: 20px; cursor: pointer; font-size: 0.7rem; }
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #f97316; border-radius: 5px; }
-        /* Responsive */
-        @media (max-width: 700px) {
-            .app-container { padding: 1rem; }
-            .stats-grid { grid-template-columns: 1fr 1fr; }
-        }
+        @media (max-width: 700px) { .app-container { padding: 1rem; } .stats-grid { grid-template-columns: 1fr 1fr; } }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+        .badge { background: rgba(249,115,22,0.2); padding: 0.2rem 0.6rem; border-radius: 30px; font-size: 0.7rem; }
+        .message-preview { max-width: 300px; white-space: normal; word-break: break-word; }
     </style>
 </head>
 <body>
@@ -295,7 +68,6 @@
 <canvas id="bg-canvas"></canvas>
 
 <div class="app-container">
-    <!-- Header -->
     <div class="header">
         <div class="logo">
             <h1>IVAS OTP Dashboard</h1>
@@ -309,12 +81,10 @@
         </div>
     </div>
 
-    <!-- Announcement Bar (dynamic) -->
     <div id="announcement-bar" class="announcement-bar" style="display: none;">
         📢 <span id="announcement-text"></span>
     </div>
 
-    <!-- Tabs -->
     <div class="tabs">
         <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
         <button class="tab-btn" data-tab="otps">🔑 OTPs / Received</button>
@@ -326,22 +96,11 @@
     <div id="tab-dashboard" class="tab-pane active">
         <div class="stats-grid" id="dash-stats"></div>
         <div class="section-card">
-            <div class="section-header">
-                <span class="section-title">🔑 Latest OTPs by Range</span>
-                <span class="badge" id="dash-range-count">0 ranges</span>
-            </div>
-            <div class="table-wrapper">
-                <table>
-                    <thead><tr><th>Range</th><th>Count</th><th>Paid</th><th>Unpaid</th><th>Revenue</th></tr></thead>
-                    <tbody id="dash-range-body"></tbody>
-                </table>
-            </div>
+            <div class="section-header"><span class="section-title">🔑 Latest OTPs by Range</span><span class="badge" id="dash-range-count">0 ranges</span></div>
+            <div class="table-wrapper"><table><thead><tr><th>Range</th><th>Count</th><th>Paid</th><th>Unpaid</th><th>Revenue</th></tr></thead><tbody id="dash-range-body"></tbody></table></div>
         </div>
         <div class="section-card">
-            <div class="section-header">
-                <span class="section-title">⚡ Live Numbers Today</span>
-                <span class="badge" id="dash-live-count">0</span>
-            </div>
+            <div class="section-header"><span class="section-title">⚡ Live Numbers Today</span><span class="badge" id="dash-live-count">0</span></div>
             <div id="dash-live-numbers" class="numbers-grid" style="padding: 0.8rem;"></div>
         </div>
     </div>
@@ -353,26 +112,16 @@
             <div class="section-header">
                 <span class="section-title">📅 Date Filter</span>
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <input type="date" id="otp-from" style="background: #1a1f2e; border: 1px solid #2d3348; padding: 0.4rem; border-radius: 8px; color: white;">
-                    <input type="date" id="otp-to" style="background: #1a1f2e; border: 1px solid #2d3348; padding: 0.4rem; border-radius: 8px; color: white;">
+                    <input type="date" id="otp-from">
+                    <input type="date" id="otp-to">
                     <button class="btn" id="fetch-otps-btn">Get OTPs</button>
                 </div>
             </div>
-            <div class="table-wrapper">
-                <table>
-                    <thead><tr><th>#</th><th>Number</th><th>Range</th><th>OTP / Message</th><th>Count</th><th>Revenue</th></tr></thead>
-                    <tbody id="otp-body"></tbody>
-                </table>
-            </div>
+            <div class="table-wrapper"><table><thead><tr><th>#</th><th>Number</th><th>Range</th><th>OTP / Message</th><th>Count</th><th>Revenue</th></tr></thead><tbody id="otp-body"></tbody></table></div>
         </div>
         <div class="section-card">
             <div class="section-header"><span class="section-title">📊 Breakdown by Range</span></div>
-            <div class="table-wrapper">
-                <table>
-                    <thead><tr><th>Range</th><th>Count</th><th>Paid</th><th>Unpaid</th><th>Revenue</th></tr></thead>
-                    <tbody id="range-breakdown"></tbody>
-                </table>
-            </div>
+            <div class="table-wrapper"><table><thead><tr><th>Range</th><th>Count</th><th>Paid</th><th>Unpaid</th><th>Revenue</th></tr></thead><tbody id="range-breakdown"></tbody></table></div>
         </div>
     </div>
 
@@ -384,13 +133,8 @@
             <div id="live-numbers-grid" class="numbers-grid" style="padding: 0.8rem;"></div>
         </div>
         <div class="section-card">
-            <div class="section-header"><span class="section-title">📋 SID Activity</span></div>
-            <div class="table-wrapper">
-                <table>
-                    <thead><tr><th>SID</th><th>Paid</th><th>Limit</th><th>Message</th></tr></thead>
-                    <tbody id="sid-body"></tbody>
-                </table>
-            </div>
+            <div class="section-header"><span class="section-title">📋 SID Activity (Live OTPs)</span></div>
+            <div class="table-wrapper"><table><thead><tr><th>SID</th><th>Paid</th><th>Limit</th><th>Message Content</th></tr></thead><tbody id="sid-body"></tbody></table></div>
         </div>
     </div>
 
@@ -418,15 +162,19 @@
             <button id="admin-login-btn">Login</button>
         </div>
         <div id="admin-panel" style="display: none;">
-            <div style="margin-bottom: 1rem;">
-                <h4>Change Password</h4>
-                <input type="password" id="new-pass" placeholder="New password">
-                <button id="change-pass-btn">Update</button>
-            </div>
-            <div>
-                <h4>Edit Announcement</h4>
-                <textarea id="announce-edit" rows="2" placeholder="Announcement message"></textarea>
-                <button id="update-announce-btn">Update</button>
+            <div><h4>Change Password</h4><input type="password" id="new-pass" placeholder="New password"><button id="change-pass-btn">Update</button></div>
+            <div><h4>Edit Announcement</h4><textarea id="announce-edit" rows="2" placeholder="Announcement message"></textarea><button id="update-announce-btn">Update</button></div>
+            <div><h4>Manage Custom Numbers</h4>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="new-number" placeholder="Number (e.g., +22512345678)" style="flex:2">
+                    <input type="text" id="new-range" placeholder="Range name" style="flex:1">
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="new-rate" placeholder="Rate (optional)">
+                    <input type="text" id="new-limit" placeholder="Limit (optional)">
+                </div>
+                <button id="add-number-btn">Add Number</button>
+                <div id="custom-numbers-list" class="admin-number-list"></div>
             </div>
             <button id="admin-logout-btn" style="background: #ef4444; margin-top: 1rem;">Logout</button>
         </div>
@@ -436,15 +184,13 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-    // --- Three.js 3D Background ---
+    // --- Three.js 3D Background (same as before) ---
     const canvas = document.getElementById('bg-canvas');
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
-
-    // Particles
     const particlesGeometry = new THREE.BufferGeometry();
     const particlesCount = 1500;
     const posArray = new Float32Array(particlesCount * 3);
@@ -457,14 +203,10 @@
     const particlesMaterial = new THREE.PointsMaterial({ color: 0xf97316, size: 0.15, transparent: true, opacity: 0.5 });
     const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
     scene.add(particlesMesh);
-
-    // Central Torus Knot
     const geometry = new THREE.TorusKnotGeometry(1.2, 0.3, 100, 16);
     const material = new THREE.MeshStandardMaterial({ color: 0xf97316, emissive: 0x331100, metalness: 0.7, roughness: 0.3 });
     const knot = new THREE.Mesh(geometry, material);
     scene.add(knot);
-
-    // Lighting
     const ambientLight = new THREE.AmbientLight(0x111122);
     scene.add(ambientLight);
     const pointLight = new THREE.PointLight(0xf97316, 0.8);
@@ -473,9 +215,7 @@
     const backLight = new THREE.PointLight(0x2266ff, 0.3);
     backLight.position.set(-3, 2, -4);
     scene.add(backLight);
-
     camera.position.z = 6;
-
     function animate() {
         requestAnimationFrame(animate);
         knot.rotation.x += 0.005;
@@ -492,9 +232,6 @@
 
     // --- Dashboard Logic ---
     let cache = {};
-    let isLoggedIn = false;
-
-    // DOM elements
     const tabs = document.querySelectorAll('.tab-btn');
     const panes = {
         dashboard: document.getElementById('tab-dashboard'),
@@ -503,19 +240,15 @@
         numbers: document.getElementById('tab-numbers')
     };
     let activeTab = 'dashboard';
-
     function setActiveTab(tab) {
         activeTab = tab;
         Object.keys(panes).forEach(p => panes[p].classList.remove('active'));
         panes[tab].classList.add('active');
-        tabs.forEach(btn => {
-            if(btn.dataset.tab === tab) btn.classList.add('active');
-            else btn.classList.remove('active');
-        });
+        tabs.forEach(btn => { if(btn.dataset.tab === tab) btn.classList.add('active'); else btn.classList.remove('active'); });
     }
     tabs.forEach(btn => btn.addEventListener('click', () => setActiveTab(btn.dataset.tab)));
 
-    // Helper: render number grid
+    // Helper: render number grid with generate OTP button
     function renderNumbers(numbers) {
         const grid = document.getElementById('numbers-grid');
         const countSpan = document.getElementById('num-count');
@@ -544,7 +277,6 @@
         } catch(e) { alert('Network error'); }
     }
 
-    // Render dashboard
     async function fetchAll() {
         try {
             const res = await fetch('/api/all');
@@ -554,20 +286,18 @@
             setStatus(true);
             renderDashboard(data);
             renderLive(data.live);
-            renderNumbers(data.numbers);
+            // Numbers: fetch merged numbers (custom + IVAS) via /api/numbers endpoint
+            const numbersRes = await fetch('/api/numbers');
+            const numbersData = await numbersRes.json();
+            if(!numbersData.error) renderNumbers(numbersData.numbers);
         } catch(e) { setStatus(false); console.error(e); }
     }
 
     function setStatus(ok) {
         const dot = document.getElementById('status-dot');
         const text = document.getElementById('status-text');
-        if(ok) {
-            dot.className = 'dot';
-            text.innerText = 'Connected';
-        } else {
-            dot.className = 'dot off';
-            text.innerText = 'Auth failed';
-        }
+        if(ok) { dot.className = 'dot'; text.innerText = 'Connected'; }
+        else { dot.className = 'dot off'; text.innerText = 'Auth failed'; }
     }
 
     function renderDashboard(data) {
@@ -586,9 +316,7 @@
         document.getElementById('dash-range-count').innerText = details.length + ' ranges';
         const rangeBody = document.getElementById('dash-range-body');
         if(!details.length) rangeBody.innerHTML = '<tr><td colspan="5">No data</td></tr>';
-        else rangeBody.innerHTML = details.map(d => `
-            <tr><td>${d.range}</td><td>${d.count}</td><td>${d.paid}</td><td>${d.unpaid}</td><td>$${d.revenue}</td></tr>
-        `).join('');
+        else rangeBody.innerHTML = details.map(d => `<tr><td>${d.range}</td><td>${d.count}</td><td>${d.paid}</td><td>${d.unpaid}</td><td>$${d.revenue}</td></tr>`).join('');
         const liveNumbers = live.numbers || [];
         document.getElementById('dash-live-count').innerText = liveNumbers.length;
         const liveDiv = document.getElementById('dash-live-numbers');
@@ -610,7 +338,7 @@
         const sidRows = live.sid_rows || [];
         const sidBody = document.getElementById('sid-body');
         sidBody.innerHTML = sidRows.map(r => `
-            <tr><td>${r.sid}</td><td>${r.paid||'—'}</td><td>${r.limit||'—'}</td><td>${r.message||''}</td></tr>
+            <tr><td>${r.sid}</td><td>${r.paid||'—'}</td><td>${r.limit||'—'}</td><td class="message-preview">${r.message ? `<span class="otp-chip">${r.message}</span>` : '—'}</td></tr>
         `).join('') || '<tr><td colspan="4">No SID data</td></tr>';
     }
 
@@ -660,7 +388,7 @@
         } catch(e) { console.warn(e); }
     }
 
-    // Admin Modal
+    // Admin Modal and Number Management
     const modal = document.getElementById('admin-modal');
     const adminBtn = document.getElementById('admin-btn');
     const closeModal = document.getElementById('close-modal');
@@ -671,27 +399,50 @@
     function showAdminLoggedIn() {
         adminLoginForm.style.display = 'none';
         adminPanel.style.display = 'block';
-        // populate announcement edit
         fetch('/api/announcements').then(r => r.json()).then(data => {
             document.getElementById('announce-edit').value = data.message || '';
         });
+        loadCustomNumbersList();
     }
     function showAdminLoggedOut() {
         adminLoginForm.style.display = 'block';
         adminPanel.style.display = 'none';
     }
 
-    async function checkAdminSession() {
-        // Simple check: if we have session, we show admin panel; otherwise login form
-        // We'll just use the login button logic; but we can try a dummy request to see if session exists.
-        // For simplicity, we assume not logged in at start.
-        showAdminLoggedOut();
+    async function loadCustomNumbersList() {
+        try {
+            const res = await fetch('/admin/numbers');
+            const data = await res.json();
+            const container = document.getElementById('custom-numbers-list');
+            if(data.numbers && data.numbers.length) {
+                container.innerHTML = data.numbers.map(n => `
+                    <div class="admin-number-item">
+                        <span>${n.number} (${n.range_name || 'Custom'})</span>
+                        <button class="delete-number" data-number="${n.number}">Delete</button>
+                    </div>
+                `).join('');
+                // attach delete events
+                document.querySelectorAll('.delete-number').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const number = btn.getAttribute('data-number');
+                        const delRes = await fetch(`/admin/numbers/${encodeURIComponent(number)}`, { method: 'DELETE' });
+                        const delData = await delRes.json();
+                        if(delData.success) {
+                            adminMsg.innerText = `Number ${number} removed.`;
+                            loadCustomNumbersList();
+                            fetchAll(); // refresh numbers list
+                        } else {
+                            adminMsg.innerText = 'Failed to remove number.';
+                        }
+                    });
+                });
+            } else {
+                container.innerHTML = '<div>No custom numbers added.</div>';
+            }
+        } catch(e) { console.error(e); }
     }
 
-    adminBtn.onclick = () => {
-        modal.style.display = 'flex';
-        checkAdminSession();
-    };
+    adminBtn.onclick = () => { modal.style.display = 'flex'; };
     closeModal.onclick = () => modal.style.display = 'none';
     window.onclick = (e) => { if(e.target === modal) modal.style.display = 'none'; };
 
@@ -739,6 +490,30 @@
         adminMsg.innerText = 'Logged out';
         showAdminLoggedOut();
     };
+    document.getElementById('add-number-btn').onclick = async () => {
+        const number = document.getElementById('new-number').value.trim();
+        const range = document.getElementById('new-range').value.trim() || 'Custom';
+        const rate = document.getElementById('new-rate').value.trim();
+        const limit = document.getElementById('new-limit').value.trim();
+        if(!number) { adminMsg.innerText = 'Number is required'; return; }
+        const res = await fetch('/admin/numbers', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ number, range_name: range, rate, limit })
+        });
+        const data = await res.json();
+        if(data.success) {
+            adminMsg.innerText = `Number ${number} added.`;
+            loadCustomNumbersList();
+            fetchAll(); // refresh numbers display
+            document.getElementById('new-number').value = '';
+            document.getElementById('new-range').value = '';
+            document.getElementById('new-rate').value = '';
+            document.getElementById('new-limit').value = '';
+        } else {
+            adminMsg.innerText = data.error || 'Failed to add number.';
+        }
+    };
 
     // Initialization
     const today = new Date().toISOString().slice(0,10);
@@ -756,15 +531,7 @@
 
     fetchAll();
     loadAnnouncement();
-
-    // Add active tab styling
-    document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
-    panes.dashboard.classList.add('active');
+    setActiveTab('dashboard');
 </script>
-<style>
-    .tab-pane { display: none; }
-    .tab-pane.active { display: block; }
-    .badge { background: rgba(249,115,22,0.2); padding: 0.2rem 0.6rem; border-radius: 30px; font-size: 0.7rem; }
-</style>
 </body>
 </html>
