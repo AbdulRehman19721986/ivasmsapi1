@@ -1,3 +1,5 @@
+# Copyright @Arslan-MD + Dashboard by Abdul Rehman Rajpoot
+# Updates Channel t.me/arslanmd
 from flask import Flask, request, jsonify, render_template
 from datetime import datetime
 import cloudscraper
@@ -89,6 +91,7 @@ class IVASSMSClient:
             return False
 
     def check_otps(self, from_date="", to_date=""):
+        """Fetch SMS statistics and list of OTP messages (direct table)"""
         if not self.logged_in or not self.csrf_token:
             return None
         try:
@@ -104,118 +107,55 @@ class IVASSMSClient:
             if response.status_code == 200:
                 html_content = self.decompress_response(response)
                 soup = BeautifulSoup(html_content, 'html.parser')
+
+                # ---- Statistics ----
                 count_sms = soup.select_one("#CountSMS").text if soup.select_one("#CountSMS") else '0'
                 paid_sms = soup.select_one("#PaidSMS").text if soup.select_one("#PaidSMS") else '0'
                 unpaid_sms = soup.select_one("#UnpaidSMS").text if soup.select_one("#UnpaidSMS") else '0'
                 revenue_sms = soup.select_one("#RevenueSMS").text.replace(' USD', '') if soup.select_one("#RevenueSMS") else '0'
-                sms_details = []
-                items = soup.select("div.item")
-                for item in items:
-                    country_number = item.select_one(".col-sm-4").text.strip()
-                    count = item.select_one(".col-3:nth-child(2) p").text.strip()
-                    paid = item.select_one(".col-3:nth-child(3) p").text.strip()
-                    unpaid = item.select_one(".col-3:nth-child(4) p").text.strip()
-                    revenue = item.select_one(".col-3:nth-child(5) p span.currency_cdr").text.strip()
-                    sms_details.append({
-                        'country_number': country_number,
-                        'count': count,
-                        'paid': paid,
-                        'unpaid': unpaid,
-                        'revenue': revenue
-                    })
-                return {
+
+                # ---- OTP Messages (new table structure) ----
+                # Look for a table that contains OTP messages.
+                # Typical new IVAS panel: a table with headers Sender, Message, Time, Revenue.
+                otp_messages = []
+                # Find all rows in the table (skip header row)
+                rows = soup.select("table tbody tr")  # try table body rows first
+                if not rows:
+                    rows = soup.select("table tr")    # fallback: all table rows
+                for row in rows:
+                    cells = row.find_all("td")
+                    if len(cells) >= 4:  # Sender, Message, Time, Revenue
+                        sender = cells[0].get_text(strip=True)
+                        message = cells[1].get_text(strip=True)
+                        time = cells[2].get_text(strip=True)
+                        revenue = cells[3].get_text(strip=True)
+                        # Only add if there's a message (OTP)
+                        if message:
+                            otp_messages.append({
+                                'range': sender,          # we can use sender as range
+                                'phone_number': '',       # not available in this view
+                                'otp_message': message,
+                                'time': time,
+                                'revenue': revenue
+                            })
+                logger.debug(f"Extracted {len(otp_messages)} OTP messages from table.")
+
+                # For compatibility with the old structure, we keep the sms_details empty
+                # but we will return the messages directly.
+                result = {
                     'count_sms': count_sms,
                     'paid_sms': paid_sms,
                     'unpaid_sms': unpaid_sms,
                     'revenue': revenue_sms,
-                    'sms_details': sms_details
+                    'sms_details': [],          # no longer used
+                    'otp_messages': otp_messages  # directly available
                 }
+                return result
+            logger.error(f"Failed to fetch OTPs. Status: {response.status_code}")
             return None
         except Exception as e:
             logger.error(f"Error checking OTPs: {e}")
             return None
-
-    def get_sms_details(self, phone_range, from_date="", to_date=""):
-        if not self.logged_in or not self.csrf_token:
-            return None
-        try:
-            payload = {'_token': self.csrf_token, 'start': from_date, 'end': to_date, 'range': phone_range}
-            headers = {
-                'Accept': 'text/html, */*; q=0.01',
-                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                'X-Requested-With': 'XMLHttpRequest',
-                'Origin': self.base_url,
-                'Referer': f"{self.base_url}/portal/sms/received"
-            }
-            response = self.scraper.post(f"{self.base_url}/portal/sms/received/getsms/number", data=payload, headers=headers, timeout=10)
-            if response.status_code == 200:
-                html_content = self.decompress_response(response)
-                soup = BeautifulSoup(html_content, 'html.parser')
-                number_details = []
-                items = soup.select("div.card.card-body")
-                for item in items:
-                    phone_number = item.select_one(".col-sm-4").text.strip()
-                    count = item.select_one(".col-3:nth-child(2) p").text.strip()
-                    paid = item.select_one(".col-3:nth-child(3) p").text.strip()
-                    unpaid = item.select_one(".col-3:nth-child(4) p").text.strip()
-                    revenue = item.select_one(".col-3:nth-child(5) p span.currency_cdr").text.strip()
-                    onclick = item.select_one(".col-sm-4").get('onclick', '')
-                    id_number = onclick.split("'")[3] if onclick else ''
-                    number_details.append({
-                        'phone_number': phone_number,
-                        'count': count,
-                        'paid': paid,
-                        'unpaid': unpaid,
-                        'revenue': revenue,
-                        'id_number': id_number
-                    })
-                return number_details
-            return None
-        except Exception as e:
-            logger.error(f"Error getting SMS details: {e}")
-            return None
-
-    def get_otp_message(self, phone_number, phone_range, from_date="", to_date=""):
-        if not self.logged_in or not self.csrf_token:
-            return None
-        try:
-            payload = {'_token': self.csrf_token, 'start': from_date, 'end': to_date, 'Number': phone_number, 'Range': phone_range}
-            headers = {
-                'Accept': 'text/html, */*; q=0.01',
-                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                'X-Requested-With': 'XMLHttpRequest',
-                'Origin': self.base_url,
-                'Referer': f"{self.base_url}/portal/sms/received"
-            }
-            response = self.scraper.post(f"{self.base_url}/portal/sms/received/getsms/number/sms", data=payload, headers=headers, timeout=10)
-            if response.status_code == 200:
-                html_content = self.decompress_response(response)
-                soup = BeautifulSoup(html_content, 'html.parser')
-                message = soup.select_one(".col-9.col-sm-6 p").text.strip() if soup.select_one(".col-9.col-sm-6 p") else None
-                return message
-            return None
-        except Exception as e:
-            logger.error(f"Error getting OTP message: {e}")
-            return None
-
-    def get_all_otp_messages(self, sms_details, from_date="", to_date="", limit=None):
-        all_otp_messages = []
-        for detail in sms_details:
-            phone_range = detail['country_number']
-            number_details = self.get_sms_details(phone_range, from_date, to_date)
-            if number_details:
-                for number_detail in number_details:
-                    if limit is not None and len(all_otp_messages) >= limit:
-                        return all_otp_messages
-                    phone_number = number_detail['phone_number']
-                    otp_message = self.get_otp_message(phone_number, phone_range, from_date, to_date)
-                    if otp_message:
-                        all_otp_messages.append({
-                            'range': phone_range,
-                            'phone_number': phone_number,
-                            'otp_message': otp_message
-                        })
-        return all_otp_messages
 
 app = Flask(__name__)
 client = IVASSMSClient()
@@ -261,7 +201,10 @@ def api_sms():
     if not result:
         return jsonify({'error': 'Failed to fetch OTP data'}), 500
 
-    otp_messages = client.get_all_otp_messages(result['sms_details'], from_date=date_str, to_date=to_date, limit=limit)
+    # Apply limit to OTP messages
+    otp_messages = result.get('otp_messages', [])
+    if limit is not None:
+        otp_messages = otp_messages[:limit]
 
     return jsonify({
         'status': 'success',
