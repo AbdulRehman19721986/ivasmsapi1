@@ -1,448 +1,461 @@
 """
-IVAS SMS Dashboard - Professional Edition
-Author: Abdul Rehman Rajpoot
-Fixed: Cookie-based auth + credential login fallback + full retry logic
+IVAS SMS Dashboard - Professional v2
+Uses the correct 3-step API:
+  1. POST /portal/sms/received/getsms          → get ranges + stats
+  2. POST /portal/sms/received/getsms/number   → get numbers in a range
+  3. POST /portal/sms/received/getsms/number/sms → get OTP message for a number
+
+Also scrapes:
+  - /portal/numbers      → My Numbers (full table)
+  - /portal/live/my_sms  → Live SMS list
 """
 
-import os
-import re
-import json
-import time
-import logging
+import os, re, json, time, gzip, logging
+import brotli
 import cloudscraper
-from datetime import datetime
+from io import BytesIO
+from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 from flask import Flask, request, jsonify, render_template
-from requests.exceptions import ConnectionError, Timeout, RequestException
+from requests.exceptions import ConnectionError, Timeout
 
-# ─── Logging ────────────────────────────────────────────────────────────────
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 logger = logging.getLogger(__name__)
 
-# ─── Config ─────────────────────────────────────────────────────────────────
-IVAS_EMAIL    = os.environ.get('IVAS_EMAIL', 'usa19721986@gmail.com')
-IVAS_PASSWORD = os.environ.get('IVAS_PASSWORD', 'Amin@1972')
+# ─── Config ──────────────────────────────────────────────────────────────────
 BASE_URL      = "https://www.ivasms.com"
+IVAS_EMAIL    = os.environ.get('IVAS_EMAIL',    'usa19721986@gmail.com')
+IVAS_PASSWORD = os.environ.get('IVAS_PASSWORD', 'Amin@1972')
+COOKIES_ENV   = os.environ.get('COOKIES_JSON',  '')   # optional JSON cookie string
 
-# Optional: paste fresh cookies as a JSON string in this env var
-# e.g. IVAS_COOKIES='[{"name":"ivas_sms_session","value":"...","domain":"www.ivasms.com"},...]'
-IVAS_COOKIES_ENV = os.environ.get('IVAS_COOKIES', '')
-
-MAX_RETRIES   = 3
-RETRY_DELAY   = 2
-REQUEST_TO    = 20   # seconds
-
-# ─── IVAS Client ─────────────────────────────────────────────────────────────
+# ─── Client ───────────────────────────────────────────────────────────────────
 class IVASClient:
     def __init__(self):
-        self.scraper   = self._make_scraper()
-        self.logged_in = False
-        self.csrf      = None
-        self._inject_cookies_from_env()
+        self.scraper    = self._make_scraper()
+        self.logged_in  = False
+        self.csrf_token = None
 
-    # ── Scraper factory ──────────────────────────────────────────────────────
+    # ── scraper ──────────────────────────────────────────────────────────────
     def _make_scraper(self):
         s = cloudscraper.create_scraper(
             browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False}
         )
         s.headers.update({
-            'User-Agent': (
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                'AppleWebKit/537.36 (KHTML, like Gecko) '
-                'Chrome/122.0.0.0 Safari/537.36'
-            ),
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Accept':          'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9',
             'Accept-Encoding': 'gzip, deflate, br',
+            'Connection':      'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest':  'document',
+            'Sec-Fetch-Mode':  'navigate',
+            'Sec-Fetch-Site':  'none',
+            'Sec-Fetch-User':  '?1',
+            'Cache-Control':   'max-age=0',
         })
         return s
 
-    # ── Cookie helpers ────────────────────────────────────────────────────────
-    def _inject_cookies_from_env(self):
-        """Load cookies from IVAS_COOKIES env variable (JSON list)."""
-        raw = IVAS_COOKIES_ENV.strip()
-        if not raw:
-            # Try loading from cookies.json file in the same directory
-            cookie_path = os.path.join(os.path.dirname(__file__), 'cookies.json')
-            if os.path.exists(cookie_path):
-                try:
-                    with open(cookie_path) as f:
-                        raw = f.read().strip()
-                except Exception:
-                    pass
-        if not raw:
-            return
+    # ── decompress ────────────────────────────────────────────────────────────
+    def _decompress(self, resp) -> str:
+        enc     = resp.headers.get('Content-Encoding', '').lower()
+        content = resp.content
         try:
-            cookies = json.loads(raw)
-            for c in cookies:
-                self.scraper.cookies.set(
-                    c['name'], c['value'],
-                    domain=c.get('domain', 'www.ivasms.com'),
-                    path=c.get('path', '/')
-                )
-            logger.info(f"Injected {len(cookies)} cookies from storage.")
+            if enc == 'gzip':
+                content = gzip.decompress(content)
+            elif enc == 'br':
+                content = brotli.decompress(content)
         except Exception as e:
-            logger.warning(f"Failed to parse cookies: {e}")
+            logger.warning(f"Decompress warning: {e}")
+        try:
+            return content.decode('utf-8', errors='replace')
+        except Exception:
+            return resp.text
 
-    # ── HTTP helper ───────────────────────────────────────────────────────────
-    def _req(self, method, url, **kwargs):
-        kwargs.setdefault('timeout', REQUEST_TO)
-        for attempt in range(1, MAX_RETRIES + 1):
+    # ── http helper ───────────────────────────────────────────────────────────
+    def _req(self, method, url, retries=3, **kwargs):
+        kwargs.setdefault('timeout', 20)
+        for attempt in range(1, retries + 1):
             try:
                 resp = self.scraper.request(method, url, **kwargs)
-                logger.debug(f"{method.upper()} {url} → {resp.status_code}")
+                logger.info(f"[{attempt}] {method.upper()} {url} → {resp.status_code}")
                 return resp
             except (ConnectionError, Timeout) as e:
-                logger.warning(f"[{attempt}/{MAX_RETRIES}] {method} {url} failed: {e}")
-                if attempt < MAX_RETRIES:
-                    time.sleep(RETRY_DELAY * attempt)
+                logger.warning(f"Request fail [{attempt}/{retries}]: {e}")
+                if attempt < retries:
+                    time.sleep(2 * attempt)
                 else:
                     raise
-            except RequestException as e:
-                logger.error(f"Request exception: {e}")
-                raise
         return None
 
-    # ── Login check ───────────────────────────────────────────────────────────
-    def _is_portal_page(self, html: str) -> bool:
-        """Return True if the HTML looks like an authenticated portal page."""
-        markers = [
-            r'/logout',
-            r'Account Code',
-            r'Dashboard',
-            r'portal/numbers',
-            r'portal/live',
-            r'IVAS SMS',
-        ]
-        for m in markers:
-            if re.search(m, html, re.IGNORECASE):
-                return True
-        return False
-
-    def _extract_csrf(self, html: str) -> str | None:
-        soup = BeautifulSoup(html, 'html.parser')
-        el = soup.find('input', {'name': '_token'})
-        if el:
-            return el.get('value')
-        # Also look in meta tags
-        meta = soup.find('meta', {'name': 'csrf-token'})
-        if meta:
-            return meta.get('content')
-        return None
-
-    # ── Cookie-based session validation ──────────────────────────────────────
-    def _try_cookie_auth(self) -> bool:
-        """Try to access portal using existing cookies."""
+    # ── cookie loading ────────────────────────────────────────────────────────
+    def _load_cookies(self):
+        raw = COOKIES_ENV.strip()
+        if not raw:
+            path = os.path.join(os.path.dirname(__file__), 'cookies.json')
+            if os.path.exists(path):
+                with open(path) as f:
+                    raw = f.read().strip()
+        if not raw:
+            return {}
         try:
-            resp = self._req('GET', f"{BASE_URL}/portal", allow_redirects=True)
-            if resp and resp.status_code == 200 and self._is_portal_page(resp.text):
-                self.csrf = self._extract_csrf(resp.text)
-                self.logged_in = True
-                logger.info("✅ Cookie auth succeeded.")
-                return True
+            data = json.loads(raw)
+            if isinstance(data, list):
+                return {c['name']: c['value'] for c in data if 'name' in c}
+            if isinstance(data, dict):
+                return data
         except Exception as e:
-            logger.warning(f"Cookie auth failed: {e}")
-        return False
+            logger.error(f"Cookie parse error: {e}")
+        return {}
 
-    # ── Credential login ──────────────────────────────────────────────────────
-    def _credential_login(self) -> bool:
-        """Full form-based login."""
-        logger.info("🔑 Attempting credential login...")
-        try:
-            # 1. GET login page → extract CSRF
-            resp = self._req('GET', f"{BASE_URL}/login")
-            if not resp or resp.status_code != 200:
-                logger.error(f"Login page unreachable: {resp.status_code if resp else 'no response'}")
-                return False
-
-            csrf = self._extract_csrf(resp.text)
-            if not csrf:
-                logger.error("No CSRF token on login page.")
-                logger.info(f"Login page snippet: {resp.text[:300]}")
-                return False
-
-            logger.info(f"Got CSRF token: {csrf[:20]}...")
-
-            # 2. POST credentials
-            payload = {
-                '_token':   csrf,
-                'email':    IVAS_EMAIL,
-                'password': IVAS_PASSWORD,
-                'remember': '1',
-            }
-            post_resp = self._req(
-                'POST', f"{BASE_URL}/login",
-                data=payload,
-                allow_redirects=False,
-                headers={
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'Origin': BASE_URL,
-                    'Referer': f"{BASE_URL}/login",
-                }
-            )
-
-            if not post_resp:
-                logger.error("No response from login POST")
-                return False
-
-            logger.info(f"Login POST → {post_resp.status_code}, Location: {post_resp.headers.get('Location', 'none')}")
-
-            # 3. Follow redirect(s)
-            target_url = None
-            if post_resp.status_code in (301, 302):
-                loc = post_resp.headers.get('Location', '')
-                target_url = loc if loc.startswith('http') else BASE_URL + loc
-            elif post_resp.status_code == 200:
-                # Some setups return 200 with dashboard HTML directly
-                if self._is_portal_page(post_resp.text):
-                    self.csrf = self._extract_csrf(post_resp.text)
-                    self.logged_in = True
-                    logger.info("✅ Credential login successful (200 with portal).")
-                    return True
-                # May have redirected internally; try portal directly
-                target_url = f"{BASE_URL}/portal"
-            else:
-                logger.error(f"Unexpected login POST status: {post_resp.status_code}")
-                logger.info(f"Response snippet: {post_resp.text[:400]}")
-                return False
-
-            if target_url:
-                follow = self._req('GET', target_url, allow_redirects=True)
-                if follow and follow.status_code == 200 and self._is_portal_page(follow.text):
-                    self.csrf = self._extract_csrf(follow.text)
-                    self.logged_in = True
-                    logger.info(f"✅ Credential login successful (redirect to {target_url}).")
-                    return True
-                else:
-                    status = follow.status_code if follow else 'no response'
-                    logger.error(f"Redirect page not portal. Status: {status}")
-                    if follow:
-                        logger.info(f"Page snippet: {follow.text[:400]}")
-
-        except Exception as e:
-            logger.error(f"Credential login exception: {e}", exc_info=True)
-
-        return False
-
-    # ── Public login ──────────────────────────────────────────────────────────
+    # ── login ─────────────────────────────────────────────────────────────────
     def login(self) -> bool:
-        """Try cookie auth first, then credential login."""
-        if self._try_cookie_auth():
-            return True
+        """Try cookie auth → then credential auth."""
+        # 1. Cookie auth
+        cookies = self._load_cookies()
+        if cookies:
+            for name, value in cookies.items():
+                self.scraper.cookies.set(name, value, domain="www.ivasms.com")
+            logger.info(f"Injected {len(cookies)} cookies.")
+            if self._verify_session():
+                return True
+            logger.warning("Cookies loaded but session invalid – trying credentials.")
+
+        # 2. Credential login
         return self._credential_login()
 
-    def ensure_login(self) -> bool:
-        """Ensure we have an active session."""
-        if self.logged_in:
-            # Lightweight session check
-            try:
-                r = self._req('GET', f"{BASE_URL}/portal", allow_redirects=True)
-                if r and r.status_code == 200 and self._is_portal_page(r.text):
-                    self.csrf = self._extract_csrf(r.text)
+    def _verify_session(self) -> bool:
+        """Check if current session is valid by hitting the received SMS page."""
+        try:
+            resp  = self._req('GET', f"{BASE_URL}/portal/sms/received")
+            if resp and resp.status_code == 200:
+                html = self._decompress(resp)
+                soup = BeautifulSoup(html, 'html.parser')
+                csrf = soup.find('input', {'name': '_token'})
+                if csrf:
+                    self.csrf_token = csrf['value']
+                    self.logged_in  = True
+                    logger.info("✅ Session valid – CSRF obtained.")
                     return True
-            except Exception:
-                pass
-            logger.warning("Session appears expired. Re-logging in...")
-            self.logged_in = False
+                logger.warning("Session check: no CSRF on page.")
+                logger.debug(f"Page snippet: {html[:500]}")
+        except Exception as e:
+            logger.error(f"Session verify error: {e}")
+        return False
+
+    def _credential_login(self) -> bool:
+        logger.info("🔑 Credential login…")
+        try:
+            resp = self._req('GET', f"{BASE_URL}/login")
+            if not resp or resp.status_code != 200:
+                return False
+            soup = BeautifulSoup(self._decompress(resp), 'html.parser')
+            csrf_el = soup.find('input', {'name': '_token'})
+            if not csrf_el:
+                logger.error("No CSRF on login page.")
+                return False
+            csrf = csrf_el['value']
+            post = self._req('POST', f"{BASE_URL}/login",
+                             data={'_token': csrf, 'email': IVAS_EMAIL,
+                                   'password': IVAS_PASSWORD, 'remember': '1'},
+                             allow_redirects=True,
+                             headers={'Content-Type': 'application/x-www-form-urlencoded',
+                                      'Origin': BASE_URL, 'Referer': f"{BASE_URL}/login"})
+            if post and post.status_code == 200:
+                return self._verify_session()
+        except Exception as e:
+            logger.error(f"Credential login error: {e}")
+        return False
+
+    def ensure_login(self) -> bool:
+        if self.logged_in and self.csrf_token:
+            return True
         return self.login()
 
-    # ── Fetch Numbers ─────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────────────────────
+    # PUBLIC API METHODS
+    # ─────────────────────────────────────────────────────────────────────────
+
+    # ── 1. My Numbers ─────────────────────────────────────────────────────────
     def fetch_numbers(self):
+        """Scrape /portal/numbers – returns list of {number, range, rate, limit}"""
         if not self.ensure_login():
             return None
         try:
             resp = self._req('GET', f"{BASE_URL}/portal/numbers")
             if not resp or resp.status_code != 200:
                 return None
-            soup = BeautifulSoup(resp.text, 'html.parser')
+            soup  = BeautifulSoup(self._decompress(resp), 'html.parser')
+            rows  = soup.select("table tbody tr")
             numbers = []
-
-            # Strategy 1: table rows
-            for row in soup.select("table tbody tr"):
-                cells = row.find_all("td")
-                if cells:
-                    num = cells[0].get_text(strip=True)
-                    if re.match(r'^\+?\d{7,}$', num):
-                        numbers.append({
-                            'number': num,
-                            'details': [c.get_text(strip=True) for c in cells[1:]]
-                        })
-
-            # Strategy 2: any phone-like text
+            for row in rows:
+                cells = [c.get_text(strip=True) for c in row.find_all('td')]
+                if len(cells) >= 3 and re.match(r'^\+?\d{7,}$', cells[0]):
+                    numbers.append({
+                        'number':     cells[0],
+                        'range_name': cells[1] if len(cells) > 1 else '',
+                        'rate':       cells[2] if len(cells) > 2 else '',
+                        'limit':      cells[3] if len(cells) > 3 else '',
+                    })
             if not numbers:
-                for m in re.finditer(r'(\+\d{7,})', resp.text):
-                    numbers.append({'number': m.group(1), 'details': []})
-
-            # Deduplicate
-            seen = set()
-            unique = []
+                # Fallback: regex scan
+                for m in re.finditer(r'(\d{10,})', self._decompress(resp)):
+                    numbers.append({'number': m.group(1), 'range_name': '', 'rate': '', 'limit': ''})
+            seen = set(); unique = []
             for n in numbers:
                 if n['number'] not in seen:
-                    seen.add(n['number'])
-                    unique.append(n)
-
-            logger.info(f"Numbers found: {len(unique)}")
+                    seen.add(n['number']); unique.append(n)
+            logger.info(f"Numbers: {len(unique)}")
             return unique
         except Exception as e:
-            logger.error(f"fetch_numbers error: {e}")
+            logger.error(f"fetch_numbers: {e}")
             return None
 
-    # ── Fetch Received SMS ────────────────────────────────────────────────────
-    def fetch_received_sms(self, from_date=None, to_date=None):
+    # ── 2. Received SMS (stats + per-range breakdown) ─────────────────────────
+    def fetch_received_stats(self, from_date='', to_date=''):
+        """
+        POST /portal/sms/received/getsms
+        Returns {count_sms, paid_sms, unpaid_sms, revenue, sms_details:[{range,count,paid,unpaid,revenue}]}
+        """
         if not self.ensure_login():
             return None
         try:
-            # First GET the received page to obtain fresh CSRF
-            page = self._req('GET', f"{BASE_URL}/portal/sms/received")
-            if not page or page.status_code != 200:
-                return None
-
-            csrf = self._extract_csrf(page.text) or self.csrf or ''
-            payload = {'_token': csrf}
-            if from_date:
-                payload['from'] = from_date
-            if to_date:
-                payload['to'] = to_date
-
-            resp = self._req(
-                'POST', f"{BASE_URL}/portal/sms/received/getsms",
-                data=payload,
-                headers={
-                    'Accept': 'text/html, */*; q=0.01',
-                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Referer': f"{BASE_URL}/portal/sms/received",
-                    'Origin': BASE_URL,
-                }
-            )
-            if not resp or resp.status_code != 200:
-                # Fallback: parse GET page
-                resp = page
-
-            soup = BeautifulSoup(resp.text, 'html.parser')
-
-            def _txt(sel):
-                el = soup.select_one(sel)
-                return el.get_text(strip=True).replace(' USD', '') if el else '0'
-
-            stats = {
-                'count':   _txt('#CountSMS'),
-                'paid':    _txt('#PaidSMS'),
-                'unpaid':  _txt('#UnpaidSMS'),
-                'revenue': _txt('#RevenueSMS'),
+            payload = {'from': from_date, 'to': to_date, '_token': self.csrf_token}
+            headers = {
+                'Accept':           'text/html, */*; q=0.01',
+                'Content-Type':     'application/x-www-form-urlencoded; charset=UTF-8',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Origin':           BASE_URL,
+                'Referer':          f"{BASE_URL}/portal/sms/received",
             }
+            resp = self._req('POST', f"{BASE_URL}/portal/sms/received/getsms",
+                             data=payload, headers=headers)
+            if not resp or resp.status_code != 200:
+                return None
+            html = self._decompress(resp)
+            soup = BeautifulSoup(html, 'html.parser')
 
-            messages = self._parse_sms_table(soup)
-            logger.info(f"Received SMS: {len(messages)}")
-            return {'stats': stats, 'messages': messages}
+            def _t(sel):
+                el = soup.select_one(sel)
+                return el.get_text(strip=True).replace(' USD','') if el else '0'
+
+            details = []
+            for item in soup.select("div.item"):
+                rng  = item.select_one(".col-sm-4")
+                cols = item.select(".col-3")
+                if rng and len(cols) >= 4:
+                    def _p(el): return el.select_one('p').get_text(strip=True) if el and el.select_one('p') else '0'
+                    rev_el = item.select_one(".col-3:nth-child(5) p span.currency_cdr") or \
+                             item.select_one(".col-3:last-child p span")
+                    details.append({
+                        'range':   rng.get_text(strip=True),
+                        'count':   _p(cols[0]),
+                        'paid':    _p(cols[1]),
+                        'unpaid':  _p(cols[2]),
+                        'revenue': rev_el.get_text(strip=True) if rev_el else _p(cols[3]),
+                    })
+
+            result = {
+                'count_sms': _t('#CountSMS'),
+                'paid_sms':  _t('#PaidSMS'),
+                'unpaid_sms':_t('#UnpaidSMS'),
+                'revenue':   _t('#RevenueSMS'),
+                'sms_details': details,
+                '_raw': html,
+            }
+            logger.info(f"Received stats: {result['count_sms']} SMS, {len(details)} ranges")
+            return result
         except Exception as e:
-            logger.error(f"fetch_received_sms error: {e}")
+            logger.error(f"fetch_received_stats: {e}")
             return None
 
-    # ── Fetch Live SMS ────────────────────────────────────────────────────────
+    # ── 3. Numbers in a range ─────────────────────────────────────────────────
+    def fetch_numbers_in_range(self, phone_range, from_date='', to_date=''):
+        """
+        POST /portal/sms/received/getsms/number
+        Returns [{phone_number, count, paid, unpaid, revenue, id_number}]
+        """
+        if not self.ensure_login():
+            return []
+        try:
+            payload = {'_token': self.csrf_token, 'start': from_date,
+                       'end': to_date, 'range': phone_range}
+            headers = {
+                'Accept':           'text/html, */*; q=0.01',
+                'Content-Type':     'application/x-www-form-urlencoded; charset=UTF-8',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Origin':           BASE_URL,
+                'Referer':          f"{BASE_URL}/portal/sms/received",
+            }
+            resp = self._req('POST', f"{BASE_URL}/portal/sms/received/getsms/number",
+                             data=payload, headers=headers)
+            if not resp or resp.status_code != 200:
+                return []
+            soup = BeautifulSoup(self._decompress(resp), 'html.parser')
+            results = []
+            for item in soup.select("div.card.card-body"):
+                ph   = item.select_one(".col-sm-4")
+                cols = item.select(".col-3")
+                if ph:
+                    onclick   = ph.get('onclick', '')
+                    id_number = onclick.split("'")[3] if "'" in onclick and len(onclick.split("'")) > 3 else ''
+                    def _p(el): return el.select_one('p').get_text(strip=True) if el and el.select_one('p') else '0'
+                    rev_el = item.select_one(".col-3:nth-child(5) p span.currency_cdr") or \
+                             item.select_one(".col-3:last-child p span")
+                    results.append({
+                        'phone_number': ph.get_text(strip=True),
+                        'count':   _p(cols[0]) if cols else '0',
+                        'paid':    _p(cols[1]) if len(cols) > 1 else '0',
+                        'unpaid':  _p(cols[2]) if len(cols) > 2 else '0',
+                        'revenue': rev_el.get_text(strip=True) if rev_el else (_p(cols[3]) if len(cols) > 3 else '0'),
+                        'id_number': id_number,
+                    })
+            logger.info(f"Numbers in {phone_range}: {len(results)}")
+            return results
+        except Exception as e:
+            logger.error(f"fetch_numbers_in_range({phone_range}): {e}")
+            return []
+
+    # ── 4. OTP message for a number ───────────────────────────────────────────
+    def fetch_otp_for_number(self, phone_number, phone_range, from_date='', to_date=''):
+        """
+        POST /portal/sms/received/getsms/number/sms
+        Returns the OTP/message string or None
+        """
+        if not self.ensure_login():
+            return None
+        try:
+            payload = {
+                '_token': self.csrf_token,
+                'start':  from_date,
+                'end':    to_date,
+                'Number': phone_number,
+                'Range':  phone_range,
+            }
+            headers = {
+                'Accept':           'text/html, */*; q=0.01',
+                'Content-Type':     'application/x-www-form-urlencoded; charset=UTF-8',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Origin':           BASE_URL,
+                'Referer':          f"{BASE_URL}/portal/sms/received",
+            }
+            resp = self._req('POST', f"{BASE_URL}/portal/sms/received/getsms/number/sms",
+                             data=payload, headers=headers)
+            if not resp or resp.status_code != 200:
+                return None
+            soup = BeautifulSoup(self._decompress(resp), 'html.parser')
+            # Try various selectors
+            for sel in [".col-9.col-sm-6 p", ".message-text", ".sms-body", ".col-9 p", "p"]:
+                el = soup.select_one(sel)
+                if el and el.get_text(strip=True):
+                    return el.get_text(strip=True)
+            return None
+        except Exception as e:
+            logger.error(f"fetch_otp_for_number({phone_number}): {e}")
+            return None
+
+    # ── 5. Full OTP fetch (all ranges → numbers → messages) ───────────────────
+    def fetch_all_otps(self, from_date='', to_date='', limit=50):
+        """
+        Orchestrate the full 3-step chain.
+        Returns list of {range, phone_number, otp_message, count, paid, revenue}
+        """
+        stats = self.fetch_received_stats(from_date, to_date)
+        if not stats:
+            return None, None
+
+        all_otps = []
+        for detail in stats.get('sms_details', []):
+            rng          = detail['range']
+            num_details  = self.fetch_numbers_in_range(rng, from_date, to_date)
+            for nd in num_details:
+                if limit and len(all_otps) >= limit:
+                    break
+                msg = self.fetch_otp_for_number(nd['phone_number'], rng, from_date, to_date)
+                all_otps.append({
+                    'range':        rng,
+                    'phone_number': nd['phone_number'],
+                    'otp_message':  msg or '',
+                    'count':        nd['count'],
+                    'paid':         nd['paid'],
+                    'revenue':      nd['revenue'],
+                })
+            if limit and len(all_otps) >= limit:
+                break
+
+        logger.info(f"Total OTPs fetched: {len(all_otps)}")
+        return stats, all_otps
+
+    # ── 6. Live SMS ───────────────────────────────────────────────────────────
     def fetch_live_sms(self):
+        """Scrape /portal/live/my_sms"""
         if not self.ensure_login():
             return None
         try:
             resp = self._req('GET', f"{BASE_URL}/portal/live/my_sms")
             if not resp or resp.status_code != 200:
                 return None
-            soup = BeautifulSoup(resp.text, 'html.parser')
+            html = self._decompress(resp)
+            soup = BeautifulSoup(html, 'html.parser')
 
-            def _txt(sid):
+            def _t(sid):
                 el = soup.find(id=sid)
-                return el.get_text(strip=True).replace(' USD', '').replace(',', '') if el else '0'
+                return el.get_text(strip=True).replace(' USD','').replace(',','') if el else '0'
 
             stats = {
-                'total':   _txt('CountSMS'),
-                'paid':    _txt('PaidSMS'),
-                'unpaid':  _txt('UnpaidSMS'),
-                'revenue': _txt('RevenueSMS'),
+                'total':   _t('CountSMS'),
+                'paid':    _t('PaidSMS'),
+                'unpaid':  _t('UnpaidSMS'),
+                'revenue': _t('RevenueSMS'),
             }
-            messages = self._parse_sms_table(soup)
-            logger.info(f"Live SMS: {len(messages)}")
-            return {'stats': stats, 'messages': messages}
+
+            # Parse the numbers list on the right side panel
+            numbers_list = []
+            for item in soup.select(".list-group-item, .number-item, li"):
+                txt = item.get_text(strip=True)
+                if re.match(r'^\d{10,}$', txt):
+                    numbers_list.append(txt)
+
+            # Parse SID table (left pane)
+            rows = []
+            for row in soup.select("table tbody tr"):
+                cells = [c.get_text(strip=True) for c in row.find_all('td')]
+                if cells and len(cells) >= 3:
+                    rows.append({
+                        'sid':     cells[0],
+                        'paid':    cells[1] if len(cells) > 1 else '',
+                        'limit':   cells[2] if len(cells) > 2 else '',
+                        'message': cells[3] if len(cells) > 3 else '',
+                    })
+
+            sms_today = _t('sms_today') or '0'
+            # Also try a simpler selector
+            today_el = soup.select_one(".sms-today, #sms_today, .badge-today")
+            if today_el:
+                sms_today = today_el.get_text(strip=True)
+
+            logger.info(f"Live: {stats['total']} total, {len(numbers_list)} numbers, {len(rows)} SID rows")
+            return {
+                'stats':       stats,
+                'sms_today':   sms_today,
+                'numbers':     numbers_list,
+                'sid_rows':    rows,
+            }
         except Exception as e:
-            logger.error(f"fetch_live_sms error: {e}")
+            logger.error(f"fetch_live_sms: {e}")
             return None
 
-    # ── Fetch Dashboard Stats ─────────────────────────────────────────────────
-    def fetch_dashboard_stats(self):
-        if not self.ensure_login():
-            return None
-        try:
-            resp = self._req('GET', f"{BASE_URL}/portal")
-            if not resp or resp.status_code != 200:
-                return None
-            soup = BeautifulSoup(resp.text, 'html.parser')
 
-            # Extract top apps
-            apps = []
-            for card in soup.select('.app-card, .service-card, [class*="app"]')[:10]:
-                name = card.get_text(strip=True)
-                if name and len(name) < 40:
-                    apps.append(name)
-
-            # Extract ranges / numbers summary
-            ranges = []
-            for r in soup.select('[class*="range"], [class*="number"]')[:10]:
-                txt = r.get_text(strip=True)
-                if re.search(r'\d{4,}', txt):
-                    ranges.append(txt[:50])
-
-            return {'apps': apps, 'ranges': ranges}
-        except Exception as e:
-            logger.error(f"fetch_dashboard_stats error: {e}")
-            return None
-
-    # ── SMS Table Parser ──────────────────────────────────────────────────────
-    @staticmethod
-    def _parse_sms_table(soup) -> list:
-        messages = []
-        rows = soup.select("table tbody tr") or soup.select("table tr")
-        for row in rows:
-            cells = row.find_all("td")
-            if len(cells) >= 3:
-                texts = [c.get_text(strip=True) for c in cells]
-                # Skip header-like rows
-                if any(t.lower() in ('sender', 'from', 'number', 'message', 'sms') for t in texts[:2]):
-                    continue
-                msg = {
-                    'sender':  texts[0] if len(texts) > 0 else '',
-                    'message': texts[1] if len(texts) > 1 else '',
-                    'time':    texts[2] if len(texts) > 2 else '',
-                    'revenue': texts[3] if len(texts) > 3 else '0',
-                }
-                if msg['message']:
-                    messages.append(msg)
-        return messages
-
-    # ── Debug raw page ────────────────────────────────────────────────────────
-    def debug_page(self, path: str) -> str:
-        if not self.ensure_login():
-            return "NOT LOGGED IN"
-        try:
-            resp = self._req('GET', f"{BASE_URL}{path}")
-            return resp.text if resp else "No response"
-        except Exception as e:
-            return str(e)
-
-
-# ─── App Setup ────────────────────────────────────────────────────────────────
+# ─── Flask App ────────────────────────────────────────────────────────────────
 app    = Flask(__name__)
 client = IVASClient()
 
-# Boot-time login
+logger.info("Attempting boot-time login…")
 if client.login():
-    logger.info("🚀 App started – logged in successfully.")
+    logger.info("🚀 Boot login SUCCESS")
 else:
-    logger.error("⚠️  App started – initial login FAILED. Will retry per request.")
+    logger.error("⚠️  Boot login FAILED – will retry per request")
 
 
-# ─── Routes ───────────────────────────────────────────────────────────────────
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -450,87 +463,76 @@ def index():
 
 @app.route('/api/status')
 def api_status():
-    return jsonify({
-        'logged_in': client.logged_in,
-        'timestamp': datetime.utcnow().isoformat() + 'Z',
-        'email': IVAS_EMAIL,
-    })
+    return jsonify({'logged_in': client.logged_in, 'ts': datetime.utcnow().isoformat()})
 
 
 @app.route('/api/numbers')
 def api_numbers():
     data = client.fetch_numbers()
     if data is None:
-        return jsonify({'error': 'Could not fetch numbers – check logs'}), 500
+        return jsonify({'error': 'fetch failed'}), 500
     return jsonify({'numbers': data, 'count': len(data)})
 
 
 @app.route('/api/received')
 def api_received():
-    data = client.fetch_received_sms(
-        request.args.get('from'),
-        request.args.get('to')
-    )
-    if data is None:
-        return jsonify({'error': 'Could not fetch received SMS'}), 500
-    return jsonify(data)
+    fd = request.args.get('from', '')
+    td = request.args.get('to',   '')
+    stats = client.fetch_received_stats(fd, td)
+    if stats is None:
+        return jsonify({'error': 'fetch failed'}), 500
+    stats.pop('_raw', None)
+    return jsonify(stats)
+
+
+@app.route('/api/otps')
+def api_otps():
+    """Full 3-step OTP chain."""
+    fd    = request.args.get('from',  '')
+    td    = request.args.get('to',    '')
+    limit = int(request.args.get('limit', 50))
+    stats, otps = client.fetch_all_otps(fd, td, limit)
+    if stats is None:
+        return jsonify({'error': 'fetch failed'}), 500
+    stats.pop('_raw', None)
+    return jsonify({'stats': stats, 'otps': otps, 'count': len(otps)})
 
 
 @app.route('/api/live')
 def api_live():
     data = client.fetch_live_sms()
     if data is None:
-        return jsonify({'error': 'Could not fetch live SMS'}), 500
+        return jsonify({'error': 'fetch failed'}), 500
     return jsonify(data)
 
 
 @app.route('/api/all')
 def api_all():
+    today = datetime.now().strftime('%Y-%m-%d')
     numbers  = client.fetch_numbers()
-    received = client.fetch_received_sms()
+    received = client.fetch_received_stats(today, today)
     live     = client.fetch_live_sms()
-
-    errors = []
-    if numbers  is None: errors.append('numbers')
-    if received is None: errors.append('received')
-    if live     is None: errors.append('live')
-
+    errors   = [k for k, v in [('numbers', numbers), ('received', received), ('live', live)] if v is None]
     if errors:
-        return jsonify({'error': f"Failed to fetch: {', '.join(errors)}"}), 500
-
-    return jsonify({
-        'numbers':  numbers,
-        'received': received,
-        'live':     live,
-        'fetched_at': datetime.utcnow().isoformat() + 'Z',
-    })
+        return jsonify({'error': f"Failed: {', '.join(errors)}"}), 500
+    received_clean = {k: v for k, v in received.items() if k != '_raw'}
+    return jsonify({'numbers': numbers, 'received': received_clean, 'live': live,
+                    'ts': datetime.utcnow().isoformat()})
 
 
-@app.route('/api/refresh-login', methods=['POST'])
-def api_refresh_login():
-    """Force a fresh login attempt."""
-    client.logged_in = False
-    success = client.login()
-    return jsonify({'success': success, 'logged_in': client.logged_in})
-
-
-# ─── Debug Routes (remove in production if desired) ──────────────────────────
-@app.route('/debug/<path:page>')
-def debug_raw(page):
-    html = client.debug_page(f"/{page}")
-    return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
-
-
-@app.route('/debug/login-test')
-def debug_login_test():
-    """Run a fresh login and return result."""
-    client.logged_in = False
+@app.route('/api/refresh', methods=['POST'])
+def api_refresh():
+    client.logged_in = False; client.csrf_token = None
     ok = client.login()
-    return jsonify({
-        'success': ok,
-        'logged_in': client.logged_in,
-        'email': IVAS_EMAIL,
-    })
+    return jsonify({'success': ok})
+
+
+# Debug
+@app.route('/debug/<path:p>')
+def debug(p):
+    if not client.ensure_login(): return "not logged in", 401
+    r = client._req('GET', f"{BASE_URL}/{p}")
+    return (r.text if r else "no response"), 200, {'Content-Type': 'text/html; charset=utf-8'}
 
 
 if __name__ == '__main__':
