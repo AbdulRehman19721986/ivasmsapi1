@@ -31,7 +31,6 @@ class IVASAutoClient:
         })
 
     def _request_with_retry(self, method, url, **kwargs):
-        """Make a request with retry logic."""
         for attempt in range(self.max_retries):
             try:
                 response = self.scraper.request(method, url, timeout=15, **kwargs)
@@ -45,8 +44,7 @@ class IVASAutoClient:
         return None
 
     def login(self):
-        """Perform login using email and password."""
-        logger.info("Attempting login...")
+        logger.info("Attempting login with credentials...")
         try:
             # 1. Get login page to extract CSRF token
             resp = self._request_with_retry('GET', f"{self.base_url}/login")
@@ -68,60 +66,70 @@ class IVASAutoClient:
                 'password': self.password,
                 'remember': '1'
             }
-            login_resp = self._request_with_retry('POST', f"{self.base_url}/login", data=payload, allow_redirects=True)
-            if login_resp.status_code != 200:
-                logger.error(f"Login POST returned {login_resp.status_code}")
-                return False
-
-            # 3. Verify login by accessing a page that requires authentication
-            # Try /portal first (which redirects to /portal/sms/received)
-            portal_resp = self._request_with_retry('GET', f"{self.base_url}/portal")
-            if portal_resp.status_code != 200:
-                logger.error(f"Failed to access portal after login: {portal_resp.status_code}")
-                return False
-
-            # 4. Check if we are actually logged in (look for user-specific element)
-            soup = BeautifulSoup(portal_resp.text, 'html.parser')
-            # Try to find something that indicates logged‑in state, e.g., a logout link or username
-            logout_link = soup.find('a', href=re.compile(r'/logout'))
-            if not logout_link:
-                logger.warning("No logout link found – login may have failed.")
-                # Could also check for presence of "Account Code" or similar
-                account_code = soup.find(text=re.compile(r'Account Code'))
-                if not account_code:
-                    logger.error("No account code found – login likely failed.")
-                    return False
-
-            # Extract CSRF token from portal page (if present)
-            token_input = soup.find('input', {'name': '_token'})
-            if token_input:
-                self.csrf_token = token_input['value']
-                logger.info("CSRF token extracted from portal.")
+            login_resp = self._request_with_retry('POST', f"{self.base_url}/login", data=payload, allow_redirects=False)
+            # IVAS likely redirects to /portal or /dashboard on success
+            if login_resp.status_code in [302, 301]:
+                redirect_url = login_resp.headers.get('Location')
+                logger.info(f"Login redirect to {redirect_url}")
+                # Make a GET request to the redirect location
+                follow_resp = self._request_with_retry('GET', redirect_url if redirect_url.startswith('http') else f"{self.base_url}{redirect_url}")
+                if follow_resp.status_code == 200:
+                    # Check if we are logged in
+                    soup = BeautifulSoup(follow_resp.text, 'html.parser')
+                    if self._is_logged_in(soup):
+                        self.logged_in = True
+                        self.csrf_token = self._extract_csrf(soup)
+                        logger.info("Login successful.")
+                        return True
+            elif login_resp.status_code == 200:
+                # Sometimes login returns 200 with the dashboard content
+                soup = BeautifulSoup(login_resp.text, 'html.parser')
+                if self._is_logged_in(soup):
+                    self.logged_in = True
+                    self.csrf_token = self._extract_csrf(soup)
+                    logger.info("Login successful.")
+                    return True
             else:
-                logger.warning("No CSRF token found; proceeding anyway.")
+                logger.error(f"Login POST returned {login_resp.status_code}")
 
-            self.logged_in = True
-            logger.info("Login successful.")
-            return True
+            logger.error("Login failed – credentials may be incorrect or login page changed.")
+            return False
 
         except Exception as e:
             logger.error(f"Login error: {e}")
             return False
 
+    def _is_logged_in(self, soup):
+        """Check if the page indicates a logged-in user."""
+        # Look for logout link
+        logout = soup.find('a', href=re.compile(r'/logout'))
+        if logout:
+            return True
+        # Look for account code text
+        account_code = soup.find(text=re.compile(r'Account Code'))
+        if account_code:
+            return True
+        # Look for dashboard elements
+        dashboard = soup.find('a', href=re.compile(r'/portal'))
+        if dashboard:
+            return True
+        return False
+
+    def _extract_csrf(self, soup):
+        token_input = soup.find('input', {'name': '_token'})
+        return token_input['value'] if token_input else None
+
     def ensure_login(self):
         """Check if session is still alive; if not, re‑login."""
         if not self.logged_in:
             return self.login()
-        # Quick check by hitting a protected page
         try:
             test = self._request_with_retry('GET', f"{self.base_url}/portal")
             if test.status_code == 200:
-                # Refresh CSRF token
                 soup = BeautifulSoup(test.text, 'html.parser')
-                token_input = soup.find('input', {'name': '_token'})
-                if token_input:
-                    self.csrf_token = token_input['value']
-                return True
+                if self._is_logged_in(soup):
+                    self.csrf_token = self._extract_csrf(soup)
+                    return True
         except Exception:
             pass
         logger.warning("Session expired, re‑logging in.")
@@ -152,7 +160,6 @@ class IVASAutoClient:
                         'details': [c.get_text(strip=True) for c in cells[1:]]
                     })
         if not numbers:
-            # Fallback: find any phone number in text
             potential = soup.find_all(text=re.compile(r'\+?\d{10,}'))
             for txt in potential:
                 txt = txt.strip()
@@ -165,7 +172,6 @@ class IVASAutoClient:
         """Fetch SMS from /portal/sms/received (with optional date range)."""
         if not self.ensure_login():
             return None
-        # Build payload
         payload = {}
         if from_date:
             payload['from'] = from_date
@@ -187,20 +193,13 @@ class IVASAutoClient:
             return None
 
         soup = BeautifulSoup(resp.text, 'html.parser')
-        # Extract statistics (same as before)
         stats = {
             'count': soup.select_one("#CountSMS").text if soup.select_one("#CountSMS") else '0',
             'paid': soup.select_one("#PaidSMS").text if soup.select_one("#PaidSMS") else '0',
             'unpaid': soup.select_one("#UnpaidSMS").text if soup.select_one("#UnpaidSMS") else '0',
             'revenue': soup.select_one("#RevenueSMS").text.replace(' USD', '') if soup.select_one("#RevenueSMS") else '0'
         }
-        # Parse messages (if any)
         messages = []
-        items = soup.select("div.item")
-        for item in items:
-            # This old structure might not be present; fallback to table
-            pass
-        # Fallback to table
         rows = soup.select("table tbody tr")
         if not rows:
             rows = soup.select("table tr")
@@ -231,8 +230,6 @@ class IVASAutoClient:
             return None
 
         soup = BeautifulSoup(resp.text, 'html.parser')
-
-        # Extract statistics (may be similar IDs)
         stats = {'total': '0', 'paid': '0', 'unpaid': '0', 'revenue': '0'}
         for sid, key in [('CountSMS', 'total'), ('PaidSMS', 'paid'), ('UnpaidSMS', 'unpaid'), ('RevenueSMS', 'revenue')]:
             elem = soup.find(id=sid)
@@ -240,7 +237,6 @@ class IVASAutoClient:
                 val = elem.get_text(strip=True).replace(' USD', '').replace(',', '')
                 stats[key] = val
 
-        # Parse messages from table
         messages = []
         rows = soup.select("table tbody tr")
         if not rows:
@@ -259,7 +255,6 @@ class IVASAutoClient:
                         'time': time_str,
                         'revenue': revenue
                     })
-        # Fallback: look for divs
         if not messages:
             divs = soup.select(".message-item, .sms-item, .otp-item")
             for div in divs:
@@ -322,7 +317,6 @@ def api_live():
         return jsonify({'error': 'Could not fetch live SMS'}), 500
     return jsonify(data)
 
-# Combined endpoint for dashboard
 @app.route('/api/all')
 def api_all():
     numbers = client.fetch_numbers()
