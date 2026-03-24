@@ -1,516 +1,770 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>IVAS OTP Dashboard – Abdul Rehman</title>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#0b1120;--bg2:#111827;--bg3:#1a2336;--border:#1f2d45;
-  --accent:#f97316;--a2:#fb923c;--green:#22c55e;--red:#ef4444;
-  --blue:#3b82f6;--yellow:#eab308;--text:#e2e8f0;--muted:#64748b;--r:12px;
-}
-html{font-size:14px}
-body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;display:flex}
-
-/* Sidebar */
-.sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;height:100vh;position:sticky;top:0;overflow-y:auto}
-.logo{padding:20px 16px 14px;border-bottom:1px solid var(--border)}
-.logo h1{font-size:1.1rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--a2));-webkit-background-clip:text;background-clip:text;color:transparent}
-.logo p{font-size:.65rem;color:var(--muted);margin-top:2px}
-.nav{padding:12px 8px;flex:1}
-.nl{font-size:.6rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);padding:10px 10px 4px}
-.ni{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:.83rem;color:var(--muted);transition:all .15s;border:none;background:none;width:100%;text-align:left}
-.ni:hover{background:var(--bg3);color:var(--text)}
-.ni.active{background:rgba(249,115,22,.13);color:var(--accent);font-weight:600}
-.ni-ic{width:16px;text-align:center}
-.sfooter{padding:12px 14px;border-top:1px solid var(--border);font-size:.72rem;color:var(--muted)}
-.sdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:5px;animation:pulse 2s infinite}
-.sdot.off{background:var(--red);animation:none}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-
-/* Main */
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
-.topbar{background:var(--bg2);border-bottom:1px solid var(--border);height:52px;padding:0 22px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:20}
-.tb-title{font-weight:700;font-size:.95rem}
-.tb-r{display:flex;align-items:center;gap:10px}
-.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:7px;border:none;cursor:pointer;font-size:.78rem;font-weight:600;transition:all .15s}
-.btn-p{background:linear-gradient(135deg,var(--accent),var(--a2));color:#fff}
-.btn-p:hover{opacity:.85;transform:translateY(-1px)}
-.btn-s{background:var(--bg3);color:var(--text);border:1px solid var(--border)}
-.btn-s:hover{border-color:var(--accent);color:var(--accent)}
-.btn:disabled{opacity:.45;cursor:not-allowed;transform:none!important}
-.badge{background:rgba(249,115,22,.14);color:var(--accent);border:1px solid rgba(249,115,22,.3);border-radius:16px;padding:2px 10px;font-size:.7rem;font-weight:700}
-.live-pill{display:inline-flex;align-items:center;gap:4px;background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3);border-radius:16px;padding:2px 9px;font-size:.67rem;font-weight:700;text-transform:uppercase}
-.ldot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 1.4s infinite}
-.toggle{display:flex;align-items:center;gap:6px;font-size:.75rem;color:var(--muted);cursor:pointer}
-.toggle input{accent-color:var(--accent);width:14px;height:14px;cursor:pointer}
-
-/* Content */
-.content{padding:20px 22px;overflow-y:auto;flex:1}
-.page{display:none}.page.active{display:block}
-
-/* Stats grid */
-.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:14px;margin-bottom:18px}
-.sc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;position:relative;overflow:hidden;transition:border-color .2s}
-.sc:hover{border-color:var(--accent)}
-.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--a2));border-radius:var(--r) var(--r) 0 0}
-.sc-icon{font-size:1.25rem;margin-bottom:8px}
-.sc-v{font-size:1.75rem;font-weight:800;color:var(--accent);line-height:1}
-.sc-l{font-size:.67rem;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.5px}
-
-/* Section */
-.sec{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:18px;overflow:hidden}
-.sh{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
-.st{font-size:.88rem;font-weight:700;display:flex;align-items:center;gap:7px}
-.sb{padding:0}
-
-/* Table */
-.tw{overflow-x:auto;max-height:460px;overflow-y:auto}
-table{width:100%;border-collapse:collapse;font-size:.8rem}
-thead{position:sticky;top:0;z-index:2}
-thead tr{background:var(--bg3)}
-th{padding:10px 14px;text-align:left;font-size:.65rem;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);font-weight:600;white-space:nowrap}
-td{padding:10px 14px;border-top:1px solid var(--border);vertical-align:middle}
-tr:hover td{background:rgba(255,255,255,.022)}
-
-/* Chips */
-.otp-chip{display:inline-block;background:rgba(249,115,22,.15);color:var(--accent);border:1px solid rgba(249,115,22,.35);border-radius:5px;padding:2px 8px;font-weight:800;font-family:monospace;font-size:.95rem;letter-spacing:2.5px}
-.num-chip{font-family:monospace;background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:2px 8px;font-size:.83rem}
-.rev-badge{background:rgba(34,197,94,.12);color:var(--green);border-radius:4px;padding:2px 7px;font-size:.73rem;font-weight:700;white-space:nowrap}
-.range-badge{background:rgba(59,130,246,.12);color:var(--blue);border-radius:4px;padding:2px 7px;font-size:.72rem;white-space:nowrap}
-.msg-text{max-width:320px;word-break:break-word;line-height:1.45}
-
-/* Empty / skeleton */
-.empty{text-align:center;padding:46px 20px;color:var(--muted)}
-.empty .ei{font-size:2.4rem;margin-bottom:8px}
-.empty h3{font-size:.88rem;color:var(--text);margin-bottom:3px}
-.empty p{font-size:.75rem}
-.sk{background:linear-gradient(90deg,var(--bg3) 25%,var(--border) 50%,var(--bg3) 75%);background-size:200% 100%;animation:shimmer 1.3s infinite;border-radius:5px;height:12px;width:100%}
-@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
-
-/* Search */
-.sbox{background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:6px 11px;color:var(--text);font-size:.78rem;width:185px;outline:none;transition:border-color .2s}
-.sbox:focus{border-color:var(--accent)}
-.sbox::placeholder{color:var(--muted)}
-
-/* Alert */
-.alert{padding:11px 14px;border-radius:8px;font-size:.78rem;margin-bottom:14px;display:flex;align-items:center;gap:7px}
-.ae{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#fca5a5}
-.as{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:#86efac}
-
-/* Date filter */
-.df{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.df input{background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:5px 10px;color:var(--text);font-size:.75rem;outline:none;transition:border-color .2s}
-.df input:focus{border-color:var(--accent)}
-
-/* Scrollbar */
-::-webkit-scrollbar{width:4px;height:4px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px}
-::-webkit-scrollbar-thumb:hover{background:var(--muted)}
-
-/* Numbers list */
-.nl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:10px;padding:16px}
-.nc{background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:12px 14px}
-.nc-num{font-family:monospace;font-size:.9rem;color:var(--accent);font-weight:700}
-.nc-info{font-size:.67rem;color:var(--muted);margin-top:4px}
-
-@keyframes spin{to{transform:rotate(360deg)}}
-.spin{display:inline-block;animation:spin .6s linear infinite}
-
-@media(max-width:700px){
-  .sidebar{width:48px}
-  .logo p,.ni span,.nl,.sfooter span{display:none}
-  .logo h1{font-size:.75rem}
-  .ni{justify-content:center;padding:9px}
-  .content{padding:14px}
-  .sg{grid-template-columns:1fr 1fr}
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>IVAS OTP Dashboard | Professional 3D</title>
+    <style>
+        /* Reset & Base */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Poppins', 'Segoe UI', sans-serif;
+            background: #0a0c15;
+            color: #eef2ff;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+        /* Three.js Canvas */
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+        /* Content Overlay */
+        .app-container {
+            position: relative;
+            z-index: 10;
+            backdrop-filter: blur(8px);
+            background: rgba(10, 12, 21, 0.65);
+            min-height: 100vh;
+            padding: 1.5rem;
+        }
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 1rem;
+        }
+        .logo h1 {
+            font-size: 1.6rem;
+            background: linear-gradient(135deg, #f97316, #ff9a4a);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .logo p {
+            font-size: 0.75rem;
+            color: #94a3b8;
+        }
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 6px #22c55e;
+            animation: pulse 2s infinite;
+        }
+        .dot.off {
+            background: #ef4444;
+            box-shadow: none;
+            animation: none;
+        }
+        @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
+        /* Announcement Bar */
+        .announcement-bar {
+            background: rgba(249,115,22,0.12);
+            border-left: 4px solid #f97316;
+            padding: 0.7rem 1rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            font-size: 0.85rem;
+            backdrop-filter: blur(4px);
+        }
+        /* Tab Buttons */
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+        .tab-btn {
+            background: rgba(30, 33, 48, 0.7);
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 40px;
+            color: #cbd5e1;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(4px);
+        }
+        .tab-btn.active {
+            background: #f97316;
+            color: white;
+            box-shadow: 0 0 12px rgba(249,115,22,0.4);
+        }
+        /* Cards Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: rgba(15, 20, 30, 0.7);
+            backdrop-filter: blur(8px);
+            border-radius: 20px;
+            padding: 1rem;
+            border: 1px solid rgba(255,255,255,0.08);
+            transition: transform 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-3px); background: rgba(20, 27, 40, 0.8); }
+        .stat-value { font-size: 2rem; font-weight: 700; color: #f97316; margin-top: 0.25rem; }
+        .stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; }
+        /* Tables */
+        .section-card {
+            background: rgba(15, 20, 30, 0.7);
+            backdrop-filter: blur(8px);
+            border-radius: 20px;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .section-header {
+            padding: 1rem 1.2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .section-title {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .table-wrapper {
+            overflow-x: auto;
+            max-height: 450px;
+            overflow-y: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+        th, td {
+            padding: 0.8rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        th {
+            background: rgba(0,0,0,0.3);
+            font-weight: 600;
+            color: #cbd5e1;
+        }
+        tr:hover td { background: rgba(255,255,255,0.03); }
+        .num-chip {
+            font-family: monospace;
+            background: rgba(249,115,22,0.2);
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+        .otp-chip {
+            background: #f97316;
+            color: white;
+            padding: 0.2rem 0.6rem;
+            border-radius: 20px;
+            font-family: monospace;
+            font-weight: bold;
+        }
+        .btn {
+            background: rgba(249,115,22,0.9);
+            border: none;
+            padding: 0.4rem 1rem;
+            border-radius: 30px;
+            color: white;
+            cursor: pointer;
+            font-size: 0.7rem;
+            transition: 0.2s;
+        }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid #f97316;
+            color: #f97316;
+        }
+        .btn-outline:hover {
+            background: #f97316;
+            color: white;
+        }
+        /* Number Grid */
+        .numbers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+            gap: 0.8rem;
+            padding: 1rem;
+        }
+        .number-card {
+            background: rgba(20, 27, 40, 0.6);
+            border-radius: 16px;
+            padding: 0.8rem;
+            backdrop-filter: blur(4px);
+            transition: all 0.2s;
+        }
+        .number-card:hover { background: rgba(30, 40, 55, 0.8); transform: translateY(-2px); }
+        .number {
+            font-family: monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #f97316;
+        }
+        .range-tag {
+            font-size: 0.65rem;
+            color: #94a3b8;
+            margin-top: 0.2rem;
+        }
+        /* Admin Panel Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: #0f1420;
+            border-radius: 24px;
+            width: 90%;
+            max-width: 450px;
+            padding: 1.5rem;
+            border: 1px solid #f97316;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.4);
+        }
+        .modal input, .modal textarea {
+            width: 100%;
+            background: #1a1f2e;
+            border: 1px solid #2d3348;
+            padding: 0.7rem;
+            border-radius: 12px;
+            color: white;
+            margin: 0.5rem 0;
+        }
+        .modal button {
+            margin-top: 0.5rem;
+            width: 100%;
+            background: #f97316;
+            border: none;
+            padding: 0.7rem;
+            border-radius: 12px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close-btn {
+            background: transparent;
+            border: none;
+            float: right;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #94a3b8;
+        }
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #f97316; border-radius: 5px; }
+        /* Responsive */
+        @media (max-width: 700px) {
+            .app-container { padding: 1rem; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
 </head>
 <body>
 
-<!-- Sidebar -->
-<nav class="sidebar">
-  <div class="logo">
-    <h1>📡 IVAS SMS</h1>
-    <p>Abdul Rehman · Premium</p>
-  </div>
-  <div class="nav">
-    <div class="nl">Main</div>
-    <button class="ni active" onclick="go('dashboard',this)"><span class="ni-ic">🏠</span><span>Dashboard</span></button>
-    <button class="ni" onclick="go('otps',this)"><span class="ni-ic">🔑</span><span>OTPs / Received</span></button>
-    <button class="ni" onclick="go('live',this)"><span class="ni-ic">⚡</span><span>Live SMS</span></button>
-    <button class="ni" onclick="go('numbers',this)"><span class="ni-ic">📱</span><span>My Numbers</span></button>
-  </div>
-  <div class="sfooter">
-    <span class="sdot" id="sdot"></span><span id="sstatus">Connecting…</span>
-  </div>
-</nav>
+<canvas id="bg-canvas"></canvas>
 
-<!-- Main -->
-<div class="main">
-  <div class="topbar">
-    <span class="tb-title" id="tbtitle">Dashboard</span>
-    <div class="tb-r">
-      <span id="lpill" class="live-pill" style="display:none"><span class="ldot"></span>LIVE</span>
-      <label class="toggle"><input type="checkbox" id="autoR" checked/><span>Auto</span></label>
-      <button class="btn btn-s btn-sm" id="loginBtn" onclick="forceLogin()" style="font-size:.7rem;padding:5px 10px">🔑 Re-Auth</button>
-      <button class="btn btn-p" id="refBtn"><span id="refIco">🔄</span> Refresh</button>
-    </div>
-  </div>
-
-  <div class="content">
-    <div id="galert" style="display:none"></div>
-
-    <!-- Dashboard -->
-    <div class="page active" id="page-dashboard">
-      <div class="sg" id="dStats">
-        <div class="sc"><div class="sk" style="height:60px"></div></div>
-        <div class="sc"><div class="sk" style="height:60px"></div></div>
-        <div class="sc"><div class="sk" style="height:60px"></div></div>
-        <div class="sc"><div class="sk" style="height:60px"></div></div>
-      </div>
-      <div class="sec">
-        <div class="sh"><span class="st">🔑 Latest OTPs Received</span><span class="badge" id="dOtpCnt">–</span></div>
-        <div class="sb"><div class="tw"><table>
-          <thead><tr><th>#</th><th>Number</th><th>Range</th><th>OTP / Message</th><th>Revenue</th></tr></thead>
-          <tbody id="dOtpBody"><tr><td colspan="5"><div class="empty"><div class="sk"></div></div></td></tr></tbody>
-        </table></div></div>
-      </div>
-      <div class="sec">
-        <div class="sh"><span class="st">⚡ Live SMS Numbers</span><span class="badge" id="dLiveCnt">–</span></div>
-        <div class="sb"><div id="dLiveNums" style="padding:14px 16px;display:flex;flex-wrap:wrap;gap:8px"></div></div>
-      </div>
-    </div>
-
-    <!-- OTPs Page -->
-    <div class="page" id="page-otps">
-      <div class="sg" id="otpStats"></div>
-      <div class="sec">
-        <div class="sh">
-          <span class="st">🔑 All OTP Messages</span>
-          <div class="df">
-            <input type="date" id="fromDate" title="Start date"/>
-            <input type="date" id="toDate"   title="End date"/>
-            <button class="btn btn-p" onclick="loadOtps()">Get OTPs</button>
-            <input class="sbox" id="otpSearch" placeholder="Search…" oninput="ft('otpBody',this.value)"/>
-            <span class="badge" id="otpTotal">–</span>
-          </div>
+<div class="app-container">
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">
+            <h1>IVAS OTP Dashboard</h1>
+            <p>Real-time SMS & OTP Management</p>
         </div>
-        <div class="sb"><div class="tw"><table>
-          <thead><tr><th>#</th><th>Number</th><th>Range</th><th>OTP / Message</th><th>Count</th><th>Revenue</th></tr></thead>
-          <tbody id="otpBody"></tbody>
-        </table></div></div>
-      </div>
-
-      <!-- Per-range breakdown -->
-      <div class="sec" id="rangeBreakSec">
-        <div class="sh"><span class="st">📊 Received Stats by Range</span></div>
-        <div class="sb"><div class="tw"><table>
-          <thead><tr><th>Range</th><th>Count</th><th>Paid</th><th>Unpaid</th><th>Revenue</th></tr></thead>
-          <tbody id="rangeBody"></tbody>
-        </table></div></div>
-      </div>
-    </div>
-
-    <!-- Live SMS Page -->
-    <div class="page" id="page-live">
-      <div class="sg" id="liveStats"></div>
-      <div class="sec">
-        <div class="sh"><span class="st">⚡ Live Numbers Active Today</span><span class="badge" id="liveSmsToday">–</span></div>
-        <div class="sb"><div id="liveNumsGrid" style="padding:14px 16px;display:flex;flex-wrap:wrap;gap:8px"></div></div>
-      </div>
-      <div class="sec">
-        <div class="sh"><span class="st">📋 SID Active Table</span><span class="badge" id="sidCount">–</span></div>
-        <div class="sb"><div class="tw"><table>
-          <thead><tr><th>#</th><th>SID</th><th>Paid</th><th>Limit</th><th>Message</th></tr></thead>
-          <tbody id="sidBody"></tbody>
-        </table></div></div>
-      </div>
-    </div>
-
-    <!-- Numbers Page -->
-    <div class="page" id="page-numbers">
-      <div class="sec">
-        <div class="sh">
-          <span class="st">📱 My Virtual Numbers (1000)</span>
-          <div style="display:flex;gap:8px;align-items:center">
-            <input class="sbox" id="numSearch" placeholder="Filter numbers…" oninput="filterNums(this.value)"/>
-            <span class="badge" id="numCnt">–</span>
-          </div>
+        <div class="status-badge">
+            <div class="dot" id="status-dot"></div>
+            <span id="status-text">Connecting...</span>
+            <button class="btn btn-outline" id="refresh-btn">⟳ Refresh</button>
+            <button class="btn" id="admin-btn">👑 Admin</button>
         </div>
-        <div class="sb"><div id="numGrid" class="nl-grid"></div></div>
-      </div>
     </div>
 
-  </div><!-- /content -->
-</div><!-- /main -->
+    <!-- Announcement Bar (dynamic) -->
+    <div id="announcement-bar" class="announcement-bar" style="display: none;">
+        📢 <span id="announcement-text"></span>
+    </div>
 
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
+        <button class="tab-btn" data-tab="otps">🔑 OTPs / Received</button>
+        <button class="tab-btn" data-tab="live">⚡ Live SMS</button>
+        <button class="tab-btn" data-tab="numbers">📱 My Numbers</button>
+    </div>
+
+    <!-- Dashboard Tab -->
+    <div id="tab-dashboard" class="tab-pane active">
+        <div class="stats-grid" id="dash-stats"></div>
+        <div class="section-card">
+            <div class="section-header">
+                <span class="section-title">🔑 Latest OTPs by Range</span>
+                <span class="badge" id="dash-range-count">0 ranges</span>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Range</th><th>Count</th><th>Paid</th><th>Unpaid</th><th>Revenue</th></tr></thead>
+                    <tbody id="dash-range-body"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="section-card">
+            <div class="section-header">
+                <span class="section-title">⚡ Live Numbers Today</span>
+                <span class="badge" id="dash-live-count">0</span>
+            </div>
+            <div id="dash-live-numbers" class="numbers-grid" style="padding: 0.8rem;"></div>
+        </div>
+    </div>
+
+    <!-- OTPs Tab -->
+    <div id="tab-otps" class="tab-pane">
+        <div class="stats-grid" id="otp-stats"></div>
+        <div class="section-card">
+            <div class="section-header">
+                <span class="section-title">📅 Date Filter</span>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <input type="date" id="otp-from" style="background: #1a1f2e; border: 1px solid #2d3348; padding: 0.4rem; border-radius: 8px; color: white;">
+                    <input type="date" id="otp-to" style="background: #1a1f2e; border: 1px solid #2d3348; padding: 0.4rem; border-radius: 8px; color: white;">
+                    <button class="btn" id="fetch-otps-btn">Get OTPs</button>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>#</th><th>Number</th><th>Range</th><th>OTP / Message</th><th>Count</th><th>Revenue</th></tr></thead>
+                    <tbody id="otp-body"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="section-card">
+            <div class="section-header"><span class="section-title">📊 Breakdown by Range</span></div>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Range</th><th>Count</th><th>Paid</th><th>Unpaid</th><th>Revenue</th></tr></thead>
+                    <tbody id="range-breakdown"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live SMS Tab -->
+    <div id="tab-live" class="tab-pane">
+        <div class="stats-grid" id="live-stats"></div>
+        <div class="section-card">
+            <div class="section-header"><span class="section-title">📱 Active Numbers</span></div>
+            <div id="live-numbers-grid" class="numbers-grid" style="padding: 0.8rem;"></div>
+        </div>
+        <div class="section-card">
+            <div class="section-header"><span class="section-title">📋 SID Activity</span></div>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>SID</th><th>Paid</th><th>Limit</th><th>Message</th></tr></thead>
+                    <tbody id="sid-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Numbers Tab -->
+    <div id="tab-numbers" class="tab-pane">
+        <div class="section-card">
+            <div class="section-header">
+                <span class="section-title">📱 My Virtual Numbers</span>
+                <input type="text" id="num-search" placeholder="Filter numbers..." style="background: #1a1f2e; border: 1px solid #2d3348; padding: 0.4rem 0.8rem; border-radius: 20px; width: 180px;">
+                <span id="num-count" class="badge">0</span>
+            </div>
+            <div id="numbers-grid" class="numbers-grid"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Admin Modal -->
+<div id="admin-modal" class="modal">
+    <div class="modal-content">
+        <button class="close-btn" id="close-modal">✖</button>
+        <h3 style="margin-bottom: 1rem;">Admin Panel</h3>
+        <div id="admin-login-form">
+            <input type="text" id="admin-username" placeholder="Username">
+            <input type="password" id="admin-password" placeholder="Password">
+            <button id="admin-login-btn">Login</button>
+        </div>
+        <div id="admin-panel" style="display: none;">
+            <div style="margin-bottom: 1rem;">
+                <h4>Change Password</h4>
+                <input type="password" id="new-pass" placeholder="New password">
+                <button id="change-pass-btn">Update</button>
+            </div>
+            <div>
+                <h4>Edit Announcement</h4>
+                <textarea id="announce-edit" rows="2" placeholder="Announcement message"></textarea>
+                <button id="update-announce-btn">Update</button>
+            </div>
+            <button id="admin-logout-btn" style="background: #ef4444; margin-top: 1rem;">Logout</button>
+        </div>
+        <div id="admin-msg" style="margin-top: 0.5rem; font-size: 0.8rem;"></div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-const $ = id => document.getElementById(id);
-let cache = {};
-let rTimer = null;
-let isLoading = false;
+    // --- Three.js 3D Background ---
+    const canvas = document.getElementById('bg-canvas');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
 
-// ── Routing ──────────────────────────────────────────────────────────────────
-const titles = {dashboard:'Dashboard',otps:'OTPs / Received',live:'Live SMS',numbers:'My Numbers'};
-function go(name, el){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
-  $(`page-${name}`).classList.add('active');
-  el.classList.add('active');
-  $('tbtitle').textContent = titles[name]||name;
-}
+    // Particles
+    const particlesGeometry = new THREE.BufferGeometry();
+    const particlesCount = 1500;
+    const posArray = new Float32Array(particlesCount * 3);
+    for(let i = 0; i < particlesCount * 3; i += 3) {
+        posArray[i] = (Math.random() - 0.5) * 200;
+        posArray[i+1] = (Math.random() - 0.5) * 100;
+        posArray[i+2] = (Math.random() - 0.5) * 100 - 50;
+    }
+    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+    const particlesMaterial = new THREE.PointsMaterial({ color: 0xf97316, size: 0.15, transparent: true, opacity: 0.5 });
+    const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+    scene.add(particlesMesh);
 
-// ── OTP extract ───────────────────────────────────────────────────────────────
-function extractOTP(t){
-  if(!t) return null;
-  const m = t.match(/\b(\d{4,8})\b/);
-  return m ? m[1] : null;
-}
-function renderMsg(t){
-  if(!t) return '<span style="color:var(--muted)">—</span>';
-  const otp = extractOTP(t);
-  const safe = t.replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  if(otp){
-    const hi = safe.replace(new RegExp(`\\b${otp}\\b`), `<span class="otp-chip">${otp}</span>`);
-    return `<span class="msg-text">${hi}</span>`;
-  }
-  return `<span class="msg-text">${safe}</span>`;
-}
-function rev(r){
-  if(!r||r==='0'||r==='') return '<span style="color:var(--muted)">—</span>';
-  return `<span class="rev-badge">💰 ${r}</span>`;
-}
+    // Central Torus Knot
+    const geometry = new THREE.TorusKnotGeometry(1.2, 0.3, 100, 16);
+    const material = new THREE.MeshStandardMaterial({ color: 0xf97316, emissive: 0x331100, metalness: 0.7, roughness: 0.3 });
+    const knot = new THREE.Mesh(geometry, material);
+    scene.add(knot);
 
-// ── Alerts ────────────────────────────────────────────────────────────────────
-function alert2(type, msg){
-  const el = $('galert');
-  el.innerHTML=`<div class="alert a${type[0]}"><span>${type==='error'?'❌':'✅'}</span>${msg}</div>`;
-  el.style.display='block';
-  setTimeout(()=>el.style.display='none',5000);
-}
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0x111122);
+    scene.add(ambientLight);
+    const pointLight = new THREE.PointLight(0xf97316, 0.8);
+    pointLight.position.set(5, 5, 5);
+    scene.add(pointLight);
+    const backLight = new THREE.PointLight(0x2266ff, 0.3);
+    backLight.position.set(-3, 2, -4);
+    scene.add(backLight);
 
-// ── Loading ───────────────────────────────────────────────────────────────────
-function setLoad(on){
-  isLoading=on;
-  $('refBtn').disabled=on;
-  $('refIco').className=on?'spin':'';
-  $('refIco').textContent='🔄';
-}
+    camera.position.z = 6;
 
-// ── Status bar ────────────────────────────────────────────────────────────────
-function setStatus(ok){
-  $('sdot').className='sdot'+(ok?'':' off');
-  $('sstatus').textContent=ok?'Connected':'Auth failed';
-  $('lpill').style.display=ok?'inline-flex':'none';
-}
+    function animate() {
+        requestAnimationFrame(animate);
+        knot.rotation.x += 0.005;
+        knot.rotation.y += 0.01;
+        particlesMesh.rotation.y += 0.0005;
+        renderer.render(scene, camera);
+    }
+    animate();
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
 
-// ── Filter table ──────────────────────────────────────────────────────────────
-function ft(tbodyId, q){
-  document.querySelectorAll(`#${tbodyId} tr`).forEach(r=>{
-    r.style.display=r.textContent.toLowerCase().includes(q.toLowerCase())?'':'none';
-  });
-}
-function filterNums(q){
-  document.querySelectorAll('#numGrid .nc').forEach(c=>{
-    c.style.display=c.textContent.toLowerCase().includes(q.toLowerCase())?'':'none';
-  });
-}
+    // --- Dashboard Logic ---
+    let cache = {};
+    let isLoggedIn = false;
 
-// ── Stat card ─────────────────────────────────────────────────────────────────
-function sc(icon,val,label){
-  return `<div class="sc"><div class="sc-icon">${icon}</div><div class="sc-v">${val||'0'}</div><div class="sc-l">${label}</div></div>`;
-}
+    // DOM elements
+    const tabs = document.querySelectorAll('.tab-btn');
+    const panes = {
+        dashboard: document.getElementById('tab-dashboard'),
+        otps: document.getElementById('tab-otps'),
+        live: document.getElementById('tab-live'),
+        numbers: document.getElementById('tab-numbers')
+    };
+    let activeTab = 'dashboard';
 
-// ── Render dashboard ──────────────────────────────────────────────────────────
-function renderDash(data){
-  const r = data.received||{};
-  const live = data.live||{};
-  const nums = data.numbers||[];
-  $('dStats').innerHTML =
-    sc('🔑', r.count_sms||r.count||'0','Total OTPs Today') +
-    sc('💰', r.revenue||'0','Revenue USD') +
-    sc('⚡', live.stats?.total||'0','Live Today') +
-    sc('📱', nums.length,'My Numbers');
+    function setActiveTab(tab) {
+        activeTab = tab;
+        Object.keys(panes).forEach(p => panes[p].classList.remove('active'));
+        panes[tab].classList.add('active');
+        tabs.forEach(btn => {
+            if(btn.dataset.tab === tab) btn.classList.add('active');
+            else btn.classList.remove('active');
+        });
+    }
+    tabs.forEach(btn => btn.addEventListener('click', () => setActiveTab(btn.dataset.tab)));
 
-  // OTP table (show top 20 from sms_details → limited display)
-  const details = r.sms_details||[];
-  $('dOtpCnt').textContent = details.length + ' ranges';
-  if(!details.length){
-    $('dOtpBody').innerHTML=`<tr><td colspan="5"><div class="empty"><div class="ei">📭</div><h3>No OTPs today</h3><p>Try the OTPs page with a date range</p></div></td></tr>`;
-  } else {
-    $('dOtpBody').innerHTML = details.map((d,i)=>`
-      <tr>
-        <td style="color:var(--muted)">${i+1}</td>
-        <td><span class="num-chip">📱 ${d.range}</span></td>
-        <td><span class="range-badge">Range</span></td>
-        <td>Count: <b>${d.count}</b> · Paid: <b style="color:var(--green)">${d.paid}</b></td>
-        <td>${rev(d.revenue)}</td>
-      </tr>`).join('');
-  }
+    // Helper: render number grid
+    function renderNumbers(numbers) {
+        const grid = document.getElementById('numbers-grid');
+        const countSpan = document.getElementById('num-count');
+        countSpan.innerText = numbers.length;
+        if(!numbers.length) { grid.innerHTML = '<div style="padding: 2rem; text-align: center;">No numbers found</div>'; return; }
+        grid.innerHTML = numbers.map(n => `
+            <div class="number-card" data-number="${n.number}" data-range="${n.range_name}">
+                <div class="number">📱 ${n.number}</div>
+                <div class="range-tag">${n.range_name || 'No range'} ${n.rate ? '· Rate '+n.rate : ''}</div>
+                <button class="btn" style="margin-top: 0.5rem; width: 100%;" onclick="generateOtp('${n.number}', '${n.range_name}')">🔑 Generate OTP</button>
+            </div>
+        `).join('');
+    }
 
-  // Live numbers
-  const lnums = live.numbers||[];
-  $('dLiveCnt').textContent = lnums.length;
-  $('dLiveNums').innerHTML = lnums.length
-    ? lnums.map(n=>`<span class="num-chip">📱 ${n}</span>`).join('')
-    : '<span style="color:var(--muted);font-size:.8rem">No live numbers right now</span>';
-}
+    async function generateOtp(number, range) {
+        const today = new Date().toISOString().slice(0,10);
+        try {
+            const res = await fetch('/api/generate-otp', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ number, range, from: today, to: today })
+            });
+            const data = await res.json();
+            if(data.error) alert('Error: '+data.error);
+            else alert(`OTP for ${number}:\n${data.otp || 'No OTP found'}`);
+        } catch(e) { alert('Network error'); }
+    }
 
-// ── Render Live page ──────────────────────────────────────────────────────────
-function renderLive(live){
-  if(!live) return;
-  const s = live.stats||{};
-  $('liveStats').innerHTML =
-    sc('📨', s.total,'Total Live') +
-    sc('✅', s.paid,'Paid') +
-    sc('⏳', s.unpaid,'Unpaid') +
-    sc('💰', s.revenue,'Revenue USD');
+    // Render dashboard
+    async function fetchAll() {
+        try {
+            const res = await fetch('/api/all');
+            const data = await res.json();
+            if(data.error) { setStatus(false); return; }
+            cache = data;
+            setStatus(true);
+            renderDashboard(data);
+            renderLive(data.live);
+            renderNumbers(data.numbers);
+        } catch(e) { setStatus(false); console.error(e); }
+    }
 
-  $('liveSmsToday').textContent = live.sms_today||s.total||'0';
+    function setStatus(ok) {
+        const dot = document.getElementById('status-dot');
+        const text = document.getElementById('status-text');
+        if(ok) {
+            dot.className = 'dot';
+            text.innerText = 'Connected';
+        } else {
+            dot.className = 'dot off';
+            text.innerText = 'Auth failed';
+        }
+    }
 
-  const nums = live.numbers||[];
-  $('liveNumsGrid').innerHTML = nums.length
-    ? nums.map(n=>`<span class="num-chip" style="font-size:.85rem">📱 ${n}</span>`).join('')
-    : '<span style="color:var(--muted);font-size:.8rem">No numbers detected</span>';
+    function renderDashboard(data) {
+        const r = data.received || {};
+        const live = data.live || {};
+        const statsDiv = document.getElementById('dash-stats');
+        statsDiv.innerHTML = `
+            <div class="stat-card"><div class="stat-label">TOTAL SMS</div><div class="stat-value">${r.count_sms||'0'}</div></div>
+            <div class="stat-card"><div class="stat-label">PAID</div><div class="stat-value">${r.paid_sms||'0'}</div></div>
+            <div class="stat-card"><div class="stat-label">UNPAID</div><div class="stat-value">${r.unpaid_sms||'0'}</div></div>
+            <div class="stat-card"><div class="stat-label">REVENUE (USD)</div><div class="stat-value">$${r.revenue||'0'}</div></div>
+            <div class="stat-card"><div class="stat-label">LIVE TODAY</div><div class="stat-value">${live.sms_today||'0'}</div></div>
+            <div class="stat-card"><div class="stat-label">MY NUMBERS</div><div class="stat-value">${(data.numbers||[]).length}</div></div>
+        `;
+        const details = r.sms_details || [];
+        document.getElementById('dash-range-count').innerText = details.length + ' ranges';
+        const rangeBody = document.getElementById('dash-range-body');
+        if(!details.length) rangeBody.innerHTML = '<tr><td colspan="5">No data</td></tr>';
+        else rangeBody.innerHTML = details.map(d => `
+            <tr><td>${d.range}</td><td>${d.count}</td><td>${d.paid}</td><td>${d.unpaid}</td><td>$${d.revenue}</td></tr>
+        `).join('');
+        const liveNumbers = live.numbers || [];
+        document.getElementById('dash-live-count').innerText = liveNumbers.length;
+        const liveDiv = document.getElementById('dash-live-numbers');
+        liveDiv.innerHTML = liveNumbers.map(n => `<div class="number-card"><div class="number">📱 ${n}</div></div>`).join('') || '<div>No live numbers</div>';
+    }
 
-  const rows = live.sid_rows||[];
-  $('sidCount').textContent = rows.length;
-  $('sidBody').innerHTML = rows.length
-    ? rows.map((r,i)=>`
-        <tr>
-          <td style="color:var(--muted)">${i+1}</td>
-          <td><span class="num-chip">${r.sid}</span></td>
-          <td>${r.paid||'—'}</td>
-          <td>${r.limit||'—'}</td>
-          <td>${renderMsg(r.message)}</td>
-        </tr>`).join('')
-    : `<tr><td colspan="5"><div class="empty"><div class="ei">📡</div><h3>No SID rows</h3><p>Live SMS page may use JS rendering</p></div></td></tr>`;
-}
+    async function renderLive(live) {
+        const statsDiv = document.getElementById('live-stats');
+        const s = live.stats || {};
+        statsDiv.innerHTML = `
+            <div class="stat-card"><div class="stat-label">Total Live</div><div class="stat-value">${s.total||'0'}</div></div>
+            <div class="stat-card"><div class="stat-label">Paid</div><div class="stat-value">${s.paid||'0'}</div></div>
+            <div class="stat-card"><div class="stat-label">Unpaid</div><div class="stat-value">${s.unpaid||'0'}</div></div>
+            <div class="stat-card"><div class="stat-label">Revenue</div><div class="stat-value">$${s.revenue||'0'}</div></div>
+        `;
+        const numbersGrid = document.getElementById('live-numbers-grid');
+        const nums = live.numbers || [];
+        numbersGrid.innerHTML = nums.map(n => `<div class="number-card"><div class="number">📱 ${n}</div></div>`).join('') || '<div>No active numbers</div>';
+        const sidRows = live.sid_rows || [];
+        const sidBody = document.getElementById('sid-body');
+        sidBody.innerHTML = sidRows.map(r => `
+            <tr><td>${r.sid}</td><td>${r.paid||'—'}</td><td>${r.limit||'—'}</td><td>${r.message||''}</td></tr>
+        `).join('') || '<tr><td colspan="4">No SID data</td></tr>';
+    }
 
-// ── Render Numbers page ───────────────────────────────────────────────────────
-function renderNumbers(numbers){
-  if(!numbers) return;
-  $('numCnt').textContent = numbers.length;
-  if(!numbers.length){
-    $('numGrid').innerHTML=`<div style="padding:40px;color:var(--muted);text-align:center">No numbers found</div>`;
-    return;
-  }
-  $('numGrid').innerHTML = numbers.map(n=>`
-    <div class="nc">
-      <div class="nc-num">📱 ${n.number}</div>
-      <div class="nc-info">${n.range_name||''} ${n.rate?'· Rate: '+n.rate:''}</div>
-    </div>`).join('');
-}
+    async function loadOtps() {
+        const from = document.getElementById('otp-from').value;
+        const to = document.getElementById('otp-to').value;
+        if(!from || !to) { alert('Select both dates'); return; }
+        const otpBody = document.getElementById('otp-body');
+        otpBody.innerHTML = '<tr><td colspan="6">Loading OTPs...</td></tr>';
+        try {
+            const res = await fetch(`/api/otps?from=${from}&to=${to}&limit=100`);
+            const data = await res.json();
+            if(data.error) throw new Error(data.error);
+            const s = data.stats || {};
+            const statsDiv = document.getElementById('otp-stats');
+            statsDiv.innerHTML = `
+                <div class="stat-card"><div class="stat-label">Total SMS</div><div class="stat-value">${s.count_sms||'0'}</div></div>
+                <div class="stat-card"><div class="stat-label">Paid</div><div class="stat-value">${s.paid_sms||'0'}</div></div>
+                <div class="stat-card"><div class="stat-label">Unpaid</div><div class="stat-value">${s.unpaid_sms||'0'}</div></div>
+                <div class="stat-card"><div class="stat-label">Revenue</div><div class="stat-value">$${s.revenue||'0'}</div></div>
+            `;
+            const details = s.sms_details || [];
+            const rangeBreak = document.getElementById('range-breakdown');
+            rangeBreak.innerHTML = details.map(d => `<tr><td>${d.range}</td><td>${d.count}</td><td>${d.paid}</td><td>${d.unpaid}</td><td>$${d.revenue}</td></tr>`).join('') || '<tr><td colspan="5">No data</td></tr>';
+            const otps = data.otps || [];
+            otpBody.innerHTML = otps.map((o,i) => `
+                <tr>
+                    <td>${i+1}</td><td>${o.phone_number}</td><td>${o.range}</td>
+                    <td>${o.otp_message ? `<span class="otp-chip">${o.otp_message}</span>` : '—'}</td>
+                    <td>${o.count}</td><td>$${o.revenue}</td>
+                </tr>
+            `).join('') || '<tr><td colspan="6">No OTPs found</td></tr>';
+        } catch(e) { alert(e.message); otpBody.innerHTML = '<tr><td colspan="6">Error loading OTPs</td></tr>'; }
+    }
 
-// ── Load OTPs (full 3-step) ───────────────────────────────────────────────────
-async function loadOtps(){
-  const fd = $('fromDate').value;
-  const td = $('toDate').value;
-  $('otpBody').innerHTML=`<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--muted)">🔄 Fetching OTPs… this may take 10–30s</td></tr>`;
-  $('otpTotal').textContent='…';
-  try{
-    const params = new URLSearchParams();
-    if(fd) params.set('from', fd);
-    if(td) params.set('to',   td);
-    params.set('limit','100');
-    const res  = await fetch('/api/otps?' + params);
-    const data = await res.json();
-    if(data.error){ alert2('error', data.error); return; }
+    // Announcement
+    async function loadAnnouncement() {
+        try {
+            const res = await fetch('/api/announcements');
+            const data = await res.json();
+            if(data.message) {
+                document.getElementById('announcement-bar').style.display = 'block';
+                document.getElementById('announcement-text').innerText = data.message;
+            } else {
+                document.getElementById('announcement-bar').style.display = 'none';
+            }
+        } catch(e) { console.warn(e); }
+    }
 
-    // Stats
-    const s = data.stats||{};
-    $('otpStats').innerHTML =
-      sc('📬', s.count_sms,'Total SMS') +
-      sc('✅', s.paid_sms,'Paid') +
-      sc('⏳', s.unpaid_sms,'Unpaid') +
-      sc('💰', s.revenue,'Revenue USD');
+    // Admin Modal
+    const modal = document.getElementById('admin-modal');
+    const adminBtn = document.getElementById('admin-btn');
+    const closeModal = document.getElementById('close-modal');
+    const adminLoginForm = document.getElementById('admin-login-form');
+    const adminPanel = document.getElementById('admin-panel');
+    const adminMsg = document.getElementById('admin-msg');
 
-    // Range breakdown
-    const details = s.sms_details||[];
-    $('rangeBody').innerHTML = details.length
-      ? details.map(d=>`
-          <tr>
-            <td><span class="range-badge">${d.range}</span></td>
-            <td><b>${d.count}</b></td>
-            <td style="color:var(--green)">${d.paid}</td>
-            <td style="color:var(--red)">${d.unpaid}</td>
-            <td>${rev(d.revenue)}</td>
-          </tr>`).join('')
-      : `<tr><td colspan="5" style="color:var(--muted);padding:20px">No range data</td></tr>`;
+    function showAdminLoggedIn() {
+        adminLoginForm.style.display = 'none';
+        adminPanel.style.display = 'block';
+        // populate announcement edit
+        fetch('/api/announcements').then(r => r.json()).then(data => {
+            document.getElementById('announce-edit').value = data.message || '';
+        });
+    }
+    function showAdminLoggedOut() {
+        adminLoginForm.style.display = 'block';
+        adminPanel.style.display = 'none';
+    }
 
-    // OTP messages
-    const otps = data.otps||[];
-    $('otpTotal').textContent = otps.length;
-    $('otpBody').innerHTML = otps.length
-      ? otps.map((o,i)=>`
-          <tr>
-            <td style="color:var(--muted)">${i+1}</td>
-            <td><span class="num-chip">📱 ${o.phone_number}</span></td>
-            <td><span class="range-badge">${o.range}</span></td>
-            <td>${renderMsg(o.otp_message)}</td>
-            <td><b>${o.count||'1'}</b></td>
-            <td>${rev(o.revenue)}</td>
-          </tr>`).join('')
-      : `<tr><td colspan="6"><div class="empty"><div class="ei">📭</div><h3>No OTP messages found</h3><p>Try a different date range</p></div></td></tr>`;
+    async function checkAdminSession() {
+        // Simple check: if we have session, we show admin panel; otherwise login form
+        // We'll just use the login button logic; but we can try a dummy request to see if session exists.
+        // For simplicity, we assume not logged in at start.
+        showAdminLoggedOut();
+    }
 
-  } catch(e){ alert2('error','Network error: '+e.message); }
-}
+    adminBtn.onclick = () => {
+        modal.style.display = 'flex';
+        checkAdminSession();
+    };
+    closeModal.onclick = () => modal.style.display = 'none';
+    window.onclick = (e) => { if(e.target === modal) modal.style.display = 'none'; };
 
-// ── Main fetch ────────────────────────────────────────────────────────────────
-async function fetchAll(){
-  if(isLoading) return;
-  setLoad(true);
-  try{
-    const res  = await fetch('/api/all');
-    const data = await res.json();
-    if(data.error){ alert2('error', data.error); setStatus(false); return; }
-    cache = data;
-    setStatus(true);
-    renderDash(data);
-    renderLive(data.live);
-    renderNumbers(data.numbers);
-  } catch(e){
-    alert2('error','Network: '+e.message);
-    setStatus(false);
-  } finally { setLoad(false); }
-}
+    document.getElementById('admin-login-btn').onclick = async () => {
+        const username = document.getElementById('admin-username').value;
+        const password = document.getElementById('admin-password').value;
+        const res = await fetch('/admin/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if(data.success) {
+            adminMsg.innerText = 'Login successful';
+            showAdminLoggedIn();
+        } else {
+            adminMsg.innerText = 'Invalid credentials';
+        }
+    };
+    document.getElementById('change-pass-btn').onclick = async () => {
+        const newPass = document.getElementById('new-pass').value;
+        const res = await fetch('/admin/change-password', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ new_password: newPass })
+        });
+        const data = await res.json();
+        adminMsg.innerText = data.success ? 'Password updated' : 'Error';
+    };
+    document.getElementById('update-announce-btn').onclick = async () => {
+        const msg = document.getElementById('announce-edit').value;
+        const res = await fetch('/admin/update-announcement', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ message: msg })
+        });
+        const data = await res.json();
+        if(data.success) {
+            adminMsg.innerText = 'Announcement updated';
+            loadAnnouncement();
+        } else adminMsg.innerText = 'Error';
+    };
+    document.getElementById('admin-logout-btn').onclick = async () => {
+        await fetch('/admin/logout', { method: 'POST' });
+        adminMsg.innerText = 'Logged out';
+        showAdminLoggedOut();
+    };
 
-async function forceLogin(){
-  const btn = $('loginBtn');
-  btn.disabled=true; btn.textContent='⏳ …';
-  try{
-    const r = await fetch('/api/refresh',{method:'POST'});
-    const d = await r.json();
-    if(d.success){ alert2('success','Re-authenticated!'); fetchAll(); }
-    else alert2('error','Re-auth failed – check credentials/cookies');
-  } catch(e){ alert2('error',e.message); }
-  btn.disabled=false; btn.textContent='🔑 Re-Auth';
-}
+    // Initialization
+    const today = new Date().toISOString().slice(0,10);
+    document.getElementById('otp-from').value = today;
+    document.getElementById('otp-to').value = today;
+    document.getElementById('fetch-otps-btn').addEventListener('click', loadOtps);
+    document.getElementById('refresh-btn').addEventListener('click', fetchAll);
+    document.getElementById('num-search').addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase();
+        document.querySelectorAll('#numbers-grid .number-card').forEach(card => {
+            const num = card.querySelector('.number').innerText.toLowerCase();
+            card.style.display = num.includes(term) ? '' : 'none';
+        });
+    });
 
-// ── Date defaults ──────────────────────────────────────────────────────────────
-(function(){
-  const today = new Date().toISOString().slice(0,10);
-  $('fromDate').value = today;
-  $('toDate').value   = today;
-})();
+    fetchAll();
+    loadAnnouncement();
 
-// ── Auto-refresh ──────────────────────────────────────────────────────────────
-function startAR(){
-  if(rTimer) clearInterval(rTimer);
-  rTimer = setInterval(()=>{ if($('autoR').checked) fetchAll(); }, 15000);
-}
-$('refBtn').addEventListener('click', fetchAll);
-$('autoR').addEventListener('change', e=>{
-  if(e.target.checked) startAR(); else clearInterval(rTimer);
-});
-
-fetchAll();
-startAR();
+    // Add active tab styling
+    document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+    panes.dashboard.classList.add('active');
 </script>
+<style>
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+    .badge { background: rgba(249,115,22,0.2); padding: 0.2rem 0.6rem; border-radius: 30px; font-size: 0.7rem; }
+</style>
 </body>
 </html>
