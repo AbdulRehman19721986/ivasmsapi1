@@ -1,5 +1,6 @@
 """
 IVAS SMS Dashboard v5 – Admin number management, live OTP messages, Firebase integration
+Enhanced Firebase error logging
 """
 import os, re, json, time, gzip, logging
 from datetime import datetime
@@ -25,7 +26,7 @@ COOKIES_ENV   = os.environ.get('COOKIES_JSON',  '')
 def init_firebase_data():
     try:
         admin_ref = db.child("admin")
-        if not admin_ref.get().val():
+        if admin_ref.get() is None:
             admin_ref.set({
                 "username": "redx",
                 "password": generate_password_hash("redx")
@@ -34,24 +35,28 @@ def init_firebase_data():
         else:
             logger.info("Admin user already exists in Firebase.")
     except Exception as e:
-        logger.error(f"Firebase init failed: {e}")
+        logger.error(f"Firebase admin init failed: {e}")
 
     try:
         ann_ref = db.child("announcements")
-        if not ann_ref.get().val():
+        if ann_ref.get() is None:
             ann_ref.set({
                 "active": "Welcome to the IVAS OTP Dashboard!",
                 "history": []
             })
             logger.info("Announcement created.")
+        else:
+            logger.info("Announcement already exists.")
     except Exception as e:
         logger.error(f"Firebase announcement init failed: {e}")
 
     try:
         numbers_ref = db.child("custom_numbers")
-        if not numbers_ref.get().val():
+        if numbers_ref.get() is None:
             numbers_ref.set([])
             logger.info("Custom numbers collection initialized.")
+        else:
+            logger.info("Custom numbers collection already exists.")
     except Exception as e:
         logger.error(f"Firebase custom_numbers init failed: {e}")
 
@@ -86,24 +91,25 @@ def change_admin_password(new_password):
         logger.error(f"change_admin_password failed: {e}")
 
 def verify_admin(username, password):
-    # First try Firebase
+    """First try Firebase, then fallback to hardcoded credentials."""
     try:
         data = db.child("admin").get().val()
-        if data and data.get("username") == username:
+        if data:
+            stored_username = data.get("username")
             stored_hash = data.get("password", "")
-            if check_password_hash(stored_hash, password):
+            if stored_username == username and check_password_hash(stored_hash, password):
                 logger.info("Admin verified via Firebase.")
                 return True
             else:
-                logger.warning("Password mismatch for Firebase admin.")
+                logger.warning(f"Firebase admin mismatch: username={username}, stored={stored_username}")
         else:
-            logger.warning(f"Admin user '{username}' not found in Firebase.")
+            logger.warning("Firebase admin data is empty.")
     except Exception as e:
         logger.error(f"Firebase verify_admin failed: {e}")
 
     # Hardcoded fallback (redx / redx)
     if username == "redx" and password == "redx":
-        logger.warning("Using hardcoded admin credentials.")
+        logger.warning("Using hardcoded admin credentials (fallback).")
         return True
     return False
 
@@ -120,8 +126,8 @@ def add_custom_number(number_data):
     try:
         numbers_ref = db.child("custom_numbers")
         current = numbers_ref.get().val() or []
-        # Check for duplicate number
         if any(n.get('number') == number_data.get('number') for n in current):
+            logger.warning(f"Number {number_data['number']} already exists.")
             return False
         number_data['added_at'] = datetime.utcnow().isoformat()
         current.append(number_data)
@@ -137,6 +143,9 @@ def remove_custom_number(number):
         numbers_ref = db.child("custom_numbers")
         current = numbers_ref.get().val() or []
         filtered = [n for n in current if n.get('number') != number]
+        if len(filtered) == len(current):
+            logger.warning(f"Number {number} not found for removal.")
+            return False
         numbers_ref.set(filtered)
         logger.info(f"Removed custom number: {number}")
         return True
@@ -400,7 +409,6 @@ class IVASClient:
             for m in re.finditer(r'\b(\d{10,})\b', html):
                 n=m.group(1)
                 if n not in seen: seen.add(n); nums_list.append(n)
-            # Extract SID rows with messages
             sid_rows=[]
             for row in soup.select('table tbody tr'):
                 cells=[c.get_text(strip=True) for c in row.find_all('td')]
