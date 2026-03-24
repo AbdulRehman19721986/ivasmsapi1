@@ -86,7 +86,7 @@ def change_admin_password(new_password):
         logger.error(f"change_admin_password failed: {e}")
 
 def verify_admin(username, password):
-    # Fallback hardcoded credentials if Firebase fails
+    # First try Firebase
     try:
         data = db.child("admin").get().val()
         if data and data.get("username") == username:
@@ -109,7 +109,6 @@ def verify_admin(username, password):
 
 # ---------------------- Number Management ----------------------
 def get_custom_numbers():
-    """Return list of custom numbers from Firebase."""
     try:
         numbers = db.child("custom_numbers").get().val()
         return numbers if numbers else []
@@ -118,7 +117,6 @@ def get_custom_numbers():
         return []
 
 def add_custom_number(number_data):
-    """Add a new number to Firebase. number_data should include number, range_name, rate, limit."""
     try:
         numbers_ref = db.child("custom_numbers")
         current = numbers_ref.get().val() or []
@@ -135,7 +133,6 @@ def add_custom_number(number_data):
         return False
 
 def remove_custom_number(number):
-    """Remove a number by its exact string."""
     try:
         numbers_ref = db.child("custom_numbers")
         current = numbers_ref.get().val() or []
@@ -403,21 +400,12 @@ class IVASClient:
             for m in re.finditer(r'\b(\d{10,})\b', html):
                 n=m.group(1)
                 if n not in seen: seen.add(n); nums_list.append(n)
-            # Also extract detailed messages per number if available
-            messages_per_number = {}
-            # Look for message containers (maybe inside the same page)
-            # The live SMS page often has a table with SID, Paid, Limit, Message
+            # Extract SID rows with messages
             sid_rows=[]
             for row in soup.select('table tbody tr'):
                 cells=[c.get_text(strip=True) for c in row.find_all('td')]
                 if len(cells)>=4:
-                    sid = cells[0]
-                    paid = cells[1] if len(cells)>1 else ''
-                    limit = cells[2] if len(cells)>2 else ''
-                    message = cells[3] if len(cells)>3 else ''
-                    sid_rows.append({'sid':sid,'paid':paid,'limit':limit,'message':message})
-                    # Try to associate message with a number if possible (maybe the sid contains number)
-                    # For simplicity, we'll keep messages separate; we'll display them in the table.
+                    sid_rows.append({'sid':cells[0],'paid':cells[1],'limit':cells[2],'message':cells[3]})
             logger.info(f"Live: {stats}, {len(nums_list)} nums, {len(sid_rows)} rows")
             return {'stats':stats,'sms_today':stats['total'],'numbers':nums_list[:200],'sid_rows':sid_rows}
         except Exception as e: logger.error(f"fetch_live_sms: {e}"); return None
@@ -448,8 +436,6 @@ def api_status():
 def api_numbers():
     ivas_numbers = client.fetch_numbers() or []
     custom_numbers = get_custom_numbers()
-    # Merge: custom numbers override same number? For now, we'll show both; but to avoid duplication, we can filter.
-    # We'll show custom numbers first, then IVAS numbers not already in custom.
     existing_numbers = {n['number'] for n in custom_numbers}
     merged = custom_numbers + [n for n in ivas_numbers if n['number'] not in existing_numbers]
     return jsonify({'numbers': merged, 'count': len(merged)})
@@ -556,9 +542,7 @@ def admin_add_number():
     number = data.get('number')
     if not number:
         return jsonify({'error': 'Number is required'}), 400
-    # Ensure number is string
     number = str(number).strip()
-    # Basic validation: must be digits, maybe with + prefix
     if not re.match(r'^\+?\d{7,}$', number):
         return jsonify({'error': 'Invalid number format'}), 400
     range_name = data.get('range_name', 'Custom')
