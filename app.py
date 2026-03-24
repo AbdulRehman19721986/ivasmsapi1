@@ -1,3 +1,6 @@
+# Copyright @Arslan-MD + Dashboard by Abdul Rehman Rajpoot
+# Auto‑login & live OTP dashboard for IVAS
+
 import os
 import re
 import time
@@ -56,6 +59,7 @@ class IVASAutoClient:
             csrf_token = soup.find('input', {'name': '_token'})
             if not csrf_token:
                 logger.error("No CSRF token found on login page.")
+                logger.info(f"Login page HTML (first 500 chars): {resp.text[:500]}")
                 return False
             csrf_token = csrf_token['value']
 
@@ -67,12 +71,17 @@ class IVASAutoClient:
                 'remember': '1'
             }
             login_resp = self._request_with_retry('POST', f"{self.base_url}/login", data=payload, allow_redirects=False)
-            # IVAS likely redirects to /portal or /dashboard on success
+            logger.info(f"Login POST response status: {login_resp.status_code}")
+            logger.info(f"Login POST headers: {login_resp.headers}")
+
             if login_resp.status_code in [302, 301]:
                 redirect_url = login_resp.headers.get('Location')
-                logger.info(f"Login redirect to {redirect_url}")
-                # Make a GET request to the redirect location
-                follow_resp = self._request_with_retry('GET', redirect_url if redirect_url.startswith('http') else f"{self.base_url}{redirect_url}")
+                logger.info(f"Redirect to: {redirect_url}")
+                # Build absolute URL if needed
+                if redirect_url.startswith('/'):
+                    redirect_url = self.base_url + redirect_url
+                follow_resp = self._request_with_retry('GET', redirect_url)
+                logger.info(f"Follow redirect status: {follow_resp.status_code}")
                 if follow_resp.status_code == 200:
                     # Check if we are logged in
                     soup = BeautifulSoup(follow_resp.text, 'html.parser')
@@ -81,14 +90,22 @@ class IVASAutoClient:
                         self.csrf_token = self._extract_csrf(soup)
                         logger.info("Login successful.")
                         return True
+                    else:
+                        logger.warning("Redirect page does not show logged-in state.")
+                        logger.info(f"Redirect page HTML (first 500 chars): {follow_resp.text[:500]}")
+                else:
+                    logger.error(f"Failed to follow redirect: {follow_resp.status_code}")
             elif login_resp.status_code == 200:
-                # Sometimes login returns 200 with the dashboard content
+                # No redirect; maybe the login returns the dashboard directly
                 soup = BeautifulSoup(login_resp.text, 'html.parser')
                 if self._is_logged_in(soup):
                     self.logged_in = True
                     self.csrf_token = self._extract_csrf(soup)
                     logger.info("Login successful.")
                     return True
+                else:
+                    logger.warning("Login response 200 but not logged in.")
+                    logger.info(f"Login response HTML (first 500 chars): {login_resp.text[:500]}")
             else:
                 logger.error(f"Login POST returned {login_resp.status_code}")
 
@@ -112,6 +129,10 @@ class IVASAutoClient:
         # Look for dashboard elements
         dashboard = soup.find('a', href=re.compile(r'/portal'))
         if dashboard:
+            return True
+        # Look for any text that suggests a logged-in user (like "Welcome")
+        welcome = soup.find(text=re.compile(r'Welcome|Dashboard'))
+        if welcome:
             return True
         return False
 
@@ -346,6 +367,18 @@ def debug_page(page):
     else:
         resp = client._request_with_retry('GET', f"{client.base_url}/{page}")
     return resp.text
+
+@app.route('/test-login')
+def test_login():
+    """Performs a fresh login and returns the HTML of the page after login."""
+    # Create a temporary client to avoid interfering with the main client's state
+    temp_client = IVASAutoClient(IVAS_EMAIL, IVAS_PASSWORD)
+    if temp_client.login():
+        # After login, get the portal page and return its HTML
+        portal_resp = temp_client._request_with_retry('GET', f"{temp_client.base_url}/portal")
+        return portal_resp.text
+    else:
+        return "Login failed", 401
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
