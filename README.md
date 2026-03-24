@@ -1,24 +1,43 @@
-# 🔥 IVAS SMS Dashboard 🔥
+<!-- 🔥 IVAS SMS DASHBOARD 🔥 -->
+<p align="center">
+  <img src="https://i.ibb.co/Yf5RnVJh/IVAS-ARSLANMD-BANNER.gif" alt="IVAS SMS Dashboard" width="100%"/>
+</p>
 
-**Live OTP Monitoring with Auto‑Refresh**  
-*Built by Abdul Rehman Rajpoot* (based on original work by @Arslan-MD)
+<h1 align="center">🔥 IVAS SMS DASHBOARD 🔥 <img src="https://img.shields.io/badge/LIVE-🔥-red?style=for-the-badge" /></h1>
 
----
-
-## ⚡ Features
-
-- 🚀 **Real‑time OTP fetching** – Polls IVAS every 10 seconds
-- 📊 **SMS statistics** – Total, paid, unpaid, revenue
-- 🔒 **Cookie authentication** – Secure login using your `cookies.json`
-- 🎨 **Modern dashboard** – Responsive, dark‑themed UI
-- ⏱️ **Auto‑refresh toggle** – Control polling manually
-- 📅 **Date range & limit** – Filter OTPs by date and count
+<p align="center">
+  <b>Powered by</b>  
+  <a href="https://github.com/AbdulRehman19721986" target="_blank">
+    <img src="https://readme-typing-svg.herokuapp.com?font=Orbitron&size=24&color=FF0000&center=true&vCenter=true&width=500&lines=👑+Abdul+Rehman+Rajpoot+🔥;🚀+RedX+Bot+Creator+⚡;🌐+IVAS+Automation+Expert" />
+  </a>
+</p>
 
 ---
 
-## 🛠️ Setup
+## ⚡ Features <img src="https://img.shields.io/badge/LIVE-🔥-red?style=for-the-badge" />
 
-1. **Clone this repository**  
-   ```bash
-   git clone https://github.com/Arslan-MD/IvaSms-api.git
-   cd IvaSms-api
+- 🚀 **Real‑time OTP Dashboard** – Automatically fetches OTPs from IVAS and displays them.
+- 📊 **Live Statistics** – Total, paid, unpaid SMS and revenue.
+- 🔒 **Cookie Authentication** – Just add your `cookies.json` and go.
+- ⏱️ **Auto‑Refresh** – Polls every 10 seconds for new messages.
+- 🎨 **Modern UI** – Dark theme, responsive, works on mobile.
+- 🌍 **Host on Vercel** – One‑click deploy.
+
+---
+
+## 🧩 Requirements <img src="https://img.shields.io/badge/LIVE-🔥-red?style=for-the-badge" />
+
+- Valid `cookies.json` from your IVAS panel
+- Python 3.x
+- Dependencies from `requirements.txt`
+
+---
+
+## ⚙️ Installation <img src="https://img.shields.io/badge/LIVE-🔥-red?style=for-the-badge" />
+
+```bash
+git clone https://github.com/Arslan-MD/IvaSms-api.git
+cd IvaSms-api
+pip install -r requirements.txt
+# Place your cookies.json in the folder
+python app.py
