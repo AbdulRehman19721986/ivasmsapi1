@@ -1,6 +1,5 @@
 """
-IVAS SMS Dashboard v4 – Professional 3D Dashboard with Admin Panel
-Fixed admin login: added logging and fallback hardcoded credentials.
+IVAS SMS Dashboard v5 – Admin number management, live OTP messages, Firebase integration
 """
 import os, re, json, time, gzip, logging
 from datetime import datetime
@@ -10,8 +9,6 @@ import cloudscraper
 from requests.exceptions import ConnectionError, Timeout
 from werkzeug.security import generate_password_hash, check_password_hash
 import pyrebase
-
-# ---------------------- Firebase ----------------------
 from firebase_config import firebase, db
 
 # ---------------------- Logging ----------------------
@@ -49,6 +46,14 @@ def init_firebase_data():
             logger.info("Announcement created.")
     except Exception as e:
         logger.error(f"Firebase announcement init failed: {e}")
+
+    try:
+        numbers_ref = db.child("custom_numbers")
+        if not numbers_ref.get().val():
+            numbers_ref.set([])
+            logger.info("Custom numbers collection initialized.")
+    except Exception as e:
+        logger.error(f"Firebase custom_numbers init failed: {e}")
 
 def get_announcement():
     try:
@@ -101,6 +106,46 @@ def verify_admin(username, password):
         logger.warning("Using hardcoded admin credentials.")
         return True
     return False
+
+# ---------------------- Number Management ----------------------
+def get_custom_numbers():
+    """Return list of custom numbers from Firebase."""
+    try:
+        numbers = db.child("custom_numbers").get().val()
+        return numbers if numbers else []
+    except Exception as e:
+        logger.error(f"get_custom_numbers failed: {e}")
+        return []
+
+def add_custom_number(number_data):
+    """Add a new number to Firebase. number_data should include number, range_name, rate, limit."""
+    try:
+        numbers_ref = db.child("custom_numbers")
+        current = numbers_ref.get().val() or []
+        # Check for duplicate number
+        if any(n.get('number') == number_data.get('number') for n in current):
+            return False
+        number_data['added_at'] = datetime.utcnow().isoformat()
+        current.append(number_data)
+        numbers_ref.set(current)
+        logger.info(f"Added custom number: {number_data['number']}")
+        return True
+    except Exception as e:
+        logger.error(f"add_custom_number failed: {e}")
+        return False
+
+def remove_custom_number(number):
+    """Remove a number by its exact string."""
+    try:
+        numbers_ref = db.child("custom_numbers")
+        current = numbers_ref.get().val() or []
+        filtered = [n for n in current if n.get('number') != number]
+        numbers_ref.set(filtered)
+        logger.info(f"Removed custom number: {number}")
+        return True
+    except Exception as e:
+        logger.error(f"remove_custom_number failed: {e}")
+        return False
 
 # ---------------------- IVAS Client (unchanged) ----------------------
 class IVASClient:
@@ -358,12 +403,21 @@ class IVASClient:
             for m in re.finditer(r'\b(\d{10,})\b', html):
                 n=m.group(1)
                 if n not in seen: seen.add(n); nums_list.append(n)
+            # Also extract detailed messages per number if available
+            messages_per_number = {}
+            # Look for message containers (maybe inside the same page)
+            # The live SMS page often has a table with SID, Paid, Limit, Message
             sid_rows=[]
             for row in soup.select('table tbody tr'):
                 cells=[c.get_text(strip=True) for c in row.find_all('td')]
-                if len(cells)>=2:
-                    sid_rows.append({'sid':cells[0],'paid':cells[1] if len(cells)>1 else '',
-                                     'limit':cells[2] if len(cells)>2 else '','message':cells[3] if len(cells)>3 else ''})
+                if len(cells)>=4:
+                    sid = cells[0]
+                    paid = cells[1] if len(cells)>1 else ''
+                    limit = cells[2] if len(cells)>2 else ''
+                    message = cells[3] if len(cells)>3 else ''
+                    sid_rows.append({'sid':sid,'paid':paid,'limit':limit,'message':message})
+                    # Try to associate message with a number if possible (maybe the sid contains number)
+                    # For simplicity, we'll keep messages separate; we'll display them in the table.
             logger.info(f"Live: {stats}, {len(nums_list)} nums, {len(sid_rows)} rows")
             return {'stats':stats,'sms_today':stats['total'],'numbers':nums_list[:200],'sid_rows':sid_rows}
         except Exception as e: logger.error(f"fetch_live_sms: {e}"); return None
@@ -373,7 +427,6 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 client = IVASClient()
 
-# Initialize Firebase data
 init_firebase_data()
 
 logger.info("Boot login…")
@@ -393,10 +446,13 @@ def api_status():
 
 @app.route('/api/numbers')
 def api_numbers():
-    d = client.fetch_numbers()
-    if d is None:
-        return jsonify({'error': 'fetch failed'}), 500
-    return jsonify({'numbers': d, 'count': len(d)})
+    ivas_numbers = client.fetch_numbers() or []
+    custom_numbers = get_custom_numbers()
+    # Merge: custom numbers override same number? For now, we'll show both; but to avoid duplication, we can filter.
+    # We'll show custom numbers first, then IVAS numbers not already in custom.
+    existing_numbers = {n['number'] for n in custom_numbers}
+    merged = custom_numbers + [n for n in ivas_numbers if n['number'] not in existing_numbers]
+    return jsonify({'numbers': merged, 'count': len(merged)})
 
 @app.route('/api/received')
 def api_received():
@@ -445,7 +501,7 @@ def api_refresh():
 def api_announcements():
     return jsonify({'message': get_announcement()})
 
-# Admin APIs (require admin session)
+# Admin APIs
 @app.route('/admin/login', methods=['POST'])
 def admin_login_api():
     data = request.json
@@ -483,6 +539,50 @@ def update_announcement_api():
         return jsonify({'error': 'Missing message'}), 400
     update_announcement(new_msg)
     return jsonify({'success': True})
+
+# Number Management APIs (admin only)
+@app.route('/admin/numbers', methods=['GET'])
+def admin_list_numbers():
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+    numbers = get_custom_numbers()
+    return jsonify({'numbers': numbers})
+
+@app.route('/admin/numbers', methods=['POST'])
+def admin_add_number():
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+    data = request.json
+    number = data.get('number')
+    if not number:
+        return jsonify({'error': 'Number is required'}), 400
+    # Ensure number is string
+    number = str(number).strip()
+    # Basic validation: must be digits, maybe with + prefix
+    if not re.match(r'^\+?\d{7,}$', number):
+        return jsonify({'error': 'Invalid number format'}), 400
+    range_name = data.get('range_name', 'Custom')
+    rate = data.get('rate', '')
+    limit = data.get('limit', '')
+    number_data = {
+        'number': number,
+        'range_name': range_name,
+        'rate': rate,
+        'limit': limit
+    }
+    if add_custom_number(number_data):
+        return jsonify({'success': True})
+    else:
+        return jsonify({'error': 'Number already exists or add failed'}), 400
+
+@app.route('/admin/numbers/<number>', methods=['DELETE'])
+def admin_remove_number(number):
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+    if remove_custom_number(number):
+        return jsonify({'success': True})
+    else:
+        return jsonify({'error': 'Number not found or remove failed'}), 404
 
 # Debug endpoints (unchanged)
 @app.route('/debug/raw/<path:p>')
