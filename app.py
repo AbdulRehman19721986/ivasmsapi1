@@ -1,6 +1,4 @@
-#Copyright @Arslan-MD
-#Updates Channel t.me/arslanmd
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from datetime import datetime
 import cloudscraper
 import json
@@ -10,6 +8,8 @@ import os
 import gzip
 from io import BytesIO
 import brotli
+import threading
+import time
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -183,7 +183,6 @@ class IVASSMSClient:
                     'revenue': revenue_sms,
                     'sms_details': sms_details
                 }
-                result['raw_response'] = html_content
                 logger.debug(f"Retrieved {len(sms_details)} SMS detail records: {sms_details}")
                 return result
             logger.error(f"Failed to check OTPs. Status code: {response.status_code}, Response: {self.decompress_response(response)[:2000]}")
@@ -324,29 +323,23 @@ class IVASSMSClient:
 app = Flask(__name__)
 client = IVASSMSClient()
 
+# Try to login on startup
 with app.app_context():
     if not client.login_with_cookies():
         logger.error("Failed to initialize client with cookies")
 
 @app.route('/')
 def welcome():
-    return jsonify({
-        'message': 'Welcome to the IVAS SMS API',
-        'status': 'API is alive',
-        'endpoints': {
-            '/sms': 'Get OTP messages for a specific date (format: DD/MM/YYYY) with optional limit. Example: /sms?date=01/05/2025&limit=10'
-        }
-    })
+    return render_template('index.html')
 
-@app.route('/sms')
+@app.route('/api/sms')
 def get_sms():
     date_str = request.args.get('date')
     limit = request.args.get('limit')
     
     if not date_str:
-        return jsonify({
-            'error': 'Date parameter is required in DD/MM/YYYY format'
-        }), 400
+        # Default to today
+        date_str = datetime.now().strftime('%d/%m/%Y')
     
     try:
         parsed_date = datetime.strptime(date_str, '%d/%m/%Y') 
