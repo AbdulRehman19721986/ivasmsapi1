@@ -36,7 +36,7 @@
 ## ⚙️ Installation <img src="https://img.shields.io/badge/LIVE-🔥-red?style=for-the-badge" />
 
 ```bash
-git clone https://github.com/Arslan-MD/IvaSms-api.git
+git clone https://github.com/AbdulRehman19721986/ivasmsapi1.git
 cd IvaSms-api
 pip install -r requirements.txt
 # Place your cookies.json in the folder
