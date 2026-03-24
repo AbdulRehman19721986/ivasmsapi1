@@ -1,21 +1,74 @@
 """
-IVAS SMS Dashboard v3 — KEY FIX: Accept-Encoding = 'gzip, deflate' (no brotli)
+IVAS SMS Dashboard v3 — Admin panel, announcements, OTP generation, Firebase
 """
-import os, re, json, time, gzip, logging
+import os, re, json, time, gzip, logging, hashlib
 from datetime import datetime
 from bs4 import BeautifulSoup
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 import cloudscraper
 from requests.exceptions import ConnectionError, Timeout
+from werkzeug.security import generate_password_hash, check_password_hash
+import pyrebase
 
+# ---------------------- Firebase ----------------------
+from firebase_config import firebase, db
+
+# ---------------------- Logging ----------------------
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 logger = logging.getLogger(__name__)
 
+# ---------------------- Constants ----------------------
 BASE_URL      = "https://www.ivasms.com"
 IVAS_EMAIL    = os.environ.get('IVAS_EMAIL',    'usa19721986@gmail.com')
 IVAS_PASSWORD = os.environ.get('IVAS_PASSWORD', 'Amin@1972')
 COOKIES_ENV   = os.environ.get('COOKIES_JSON',  '')
 
+# ---------------------- Firebase Helpers ----------------------
+def init_firebase_data():
+    """Ensure admin credentials and announcements exist."""
+    admin_ref = db.child("admin")
+    if not admin_ref.get().val():
+        # Default admin: redx / redx
+        admin_ref.set({
+            "username": "redx",
+            "password": generate_password_hash("redx")
+        })
+    ann_ref = db.child("announcements")
+    if not ann_ref.get().val():
+        ann_ref.set({
+            "active": "Welcome to IVAS OTP Dashboard!",
+            "history": []
+        })
+
+def get_announcement():
+    """Return current active announcement message."""
+    ann = db.child("announcements").get().val()
+    return ann.get("active", "") if ann else ""
+
+def update_announcement(new_msg):
+    """Set new active announcement (admin only)."""
+    ann_ref = db.child("announcements")
+    current = ann_ref.get().val() or {}
+    history = current.get("history", [])
+    if current.get("active"):
+        history.append({"text": current["active"], "timestamp": datetime.utcnow().isoformat()})
+    ann_ref.update({
+        "active": new_msg,
+        "history": history[-50:]   # keep last 50
+    })
+
+def change_admin_password(new_password):
+    """Update admin password hash."""
+    db.child("admin").update({"password": generate_password_hash(new_password)})
+
+def verify_admin(username, password):
+    """Check admin credentials."""
+    data = db.child("admin").get().val()
+    if data and data.get("username") == username:
+        return check_password_hash(data.get("password", ""), password)
+    return False
+
+# ---------------------- IVAS Client (unchanged) ----------------------
 class IVASClient:
     def __init__(self):
         self.scraper    = self._make_scraper()
@@ -40,20 +93,17 @@ class IVASClient:
         return s
 
     def _text(self, resp) -> str:
-        """Decode response, decompress only if content starts with gzip magic."""
         enc = resp.headers.get('Content-Encoding', '').lower()
         raw = resp.content
-        # Only decompress if header says gzip AND content actually starts with gzip magic
         if enc == 'gzip' and raw.startswith(b'\x1f\x8b'):
             try:
                 raw = gzip.decompress(raw)
             except Exception as e:
-                logger.warning(f"gzip decompress failed: {e}, falling back to resp.text")
+                logger.warning(f"gzip decompress failed: {e}")
                 return resp.text
         elif enc == 'br':
             logger.warning("Got brotli — using resp.text fallback")
             return resp.text
-        # Otherwise, assume content is already plain text
         return raw.decode('utf-8', errors='replace')
 
     def _req(self, method, url, retries=3, extra_headers=None, **kwargs):
@@ -284,71 +334,156 @@ class IVASClient:
             return {'stats':stats,'sms_today':stats['total'],'numbers':nums_list[:200],'sid_rows':sid_rows}
         except Exception as e: logger.error(f"fetch_live_sms: {e}"); return None
 
-
-app    = Flask(__name__)
+# ---------------------- Flask App ----------------------
+app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 client = IVASClient()
-logger.info("Boot login…")
-if client.login(): logger.info("🚀 Logged in OK")
-else:              logger.error("⚠️  Login FAILED")
 
+# Initialize Firebase data
+init_firebase_data()
+
+logger.info("Boot login…")
+if client.login():
+    logger.info("🚀 Logged in OK")
+else:
+    logger.error("⚠️  Login FAILED — check credentials and network")
+
+# ---------------------- Admin Authentication ----------------------
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        if verify_admin(username, password):
+            session['admin_logged_in'] = True
+            return redirect(url_for('admin_dashboard'))
+        else:
+            return render_template('admin_login.html', error="Invalid credentials")
+    return render_template('admin_login.html')
+
+@app.route('/admin/logout')
+def admin_logout():
+    session.pop('admin_logged_in', None)
+    return redirect(url_for('index'))
+
+@app.route('/admin/dashboard')
+def admin_dashboard():
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('admin_login'))
+    current_ann = get_announcement()
+    return render_template('admin_dashboard.html', announcement=current_ann)
+
+@app.route('/admin/change-password', methods=['POST'])
+def change_password():
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+    new_password = request.json.get('new_password')
+    if not new_password:
+        return jsonify({'error': 'Missing password'}), 400
+    change_admin_password(new_password)
+    return jsonify({'success': True})
+
+@app.route('/admin/update-announcement', methods=['POST'])
+def update_announcement_route():
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+    new_msg = request.json.get('message')
+    if new_msg is None:
+        return jsonify({'error': 'Missing message'}), 400
+    update_announcement(new_msg)
+    return jsonify({'success': True})
+
+@app.route('/api/announcements')
+def get_announcements():
+    return jsonify({'message': get_announcement()})
+
+# ---------------------- OTP Generation for a Number ----------------------
+@app.route('/api/generate-otp', methods=['POST'])
+def generate_otp():
+    data = request.json
+    number = data.get('number')
+    range_name = data.get('range')
+    from_date = data.get('from', '')
+    to_date = data.get('to', '')
+    if not number or not range_name:
+        return jsonify({'error': 'Missing number or range'}), 400
+    otp = client.fetch_otp_for_number(number, range_name, from_date, to_date)
+    if otp is None:
+        return jsonify({'error': 'Could not fetch OTP'}), 500
+    return jsonify({'otp': otp})
+
+# ---------------------- Existing routes (unchanged) ----------------------
 @app.route('/')
-def index(): return render_template('index.html')
+def index():
+    return render_template('index.html')
 
 @app.route('/api/status')
-def api_status(): return jsonify({'logged_in':client.logged_in,'ts':datetime.utcnow().isoformat()})
+def api_status():
+    return jsonify({'logged_in': client.logged_in, 'ts': datetime.utcnow().isoformat()})
 
 @app.route('/api/numbers')
 def api_numbers():
-    d=client.fetch_numbers()
-    if d is None: return jsonify({'error':'fetch failed'}),500
-    return jsonify({'numbers':d,'count':len(d)})
+    d = client.fetch_numbers()
+    if d is None:
+        return jsonify({'error': 'fetch failed'}), 500
+    return jsonify({'numbers': d, 'count': len(d)})
 
 @app.route('/api/received')
 def api_received():
-    d=client.fetch_received_stats(request.args.get('from',''),request.args.get('to',''))
-    if d is None: return jsonify({'error':'fetch failed'}),500
-    d.pop('_raw',None); return jsonify(d)
+    d = client.fetch_received_stats(request.args.get('from',''), request.args.get('to',''))
+    if d is None:
+        return jsonify({'error': 'fetch failed'}), 500
+    d.pop('_raw', None)
+    return jsonify(d)
 
 @app.route('/api/otps')
 def api_otps():
-    stats,otps=client.fetch_all_otps(
-        request.args.get('from',''),request.args.get('to',''),
+    stats, otps = client.fetch_all_otps(
+        request.args.get('from',''), request.args.get('to',''),
         int(request.args.get('limit',50)))
-    if stats is None: return jsonify({'error':'fetch failed'}),500
-    stats.pop('_raw',None)
-    return jsonify({'stats':stats,'otps':otps,'count':len(otps)})
+    if stats is None:
+        return jsonify({'error': 'fetch failed'}), 500
+    stats.pop('_raw', None)
+    return jsonify({'stats': stats, 'otps': otps, 'count': len(otps)})
 
 @app.route('/api/live')
 def api_live():
-    d=client.fetch_live_sms()
-    if d is None: return jsonify({'error':'fetch failed'}),500
+    d = client.fetch_live_sms()
+    if d is None:
+        return jsonify({'error': 'fetch failed'}), 500
     return jsonify(d)
 
 @app.route('/api/all')
 def api_all():
-    today=datetime.now().strftime('%Y-%m-%d')
-    numbers=client.fetch_numbers(); received=client.fetch_received_stats(today,today); live=client.fetch_live_sms()
-    errors=[k for k,v in [('numbers',numbers),('received',received),('live',live)] if v is None]
-    if errors: return jsonify({'error':f"Failed: {', '.join(errors)}"}),500
-    received.pop('_raw',None)
-    return jsonify({'numbers':numbers,'received':received,'live':live,'ts':datetime.utcnow().isoformat()})
+    today = datetime.now().strftime('%Y-%m-%d')
+    numbers = client.fetch_numbers()
+    received = client.fetch_received_stats(today, today)
+    live = client.fetch_live_sms()
+    errors = [k for k, v in [('numbers', numbers), ('received', received), ('live', live)] if v is None]
+    if errors:
+        return jsonify({'error': f"Failed: {', '.join(errors)}"}), 500
+    received.pop('_raw', None)
+    return jsonify({'numbers': numbers, 'received': received, 'live': live, 'ts': datetime.utcnow().isoformat()})
 
 @app.route('/api/refresh', methods=['POST'])
 def api_refresh():
-    client.logged_in=False; client.csrf_token=None
-    return jsonify({'success':client.login()})
+    client.logged_in = False
+    client.csrf_token = None
+    return jsonify({'success': client.login()})
 
 @app.route('/debug/raw/<path:p>')
 def debug_raw(p):
-    if not client.ensure_login(): return "not logged in",401
-    r=client._req('GET',f"{BASE_URL}/{p}")
-    return (client._text(r) if r else "no response"),200,{'Content-Type':'text/plain; charset=utf-8'}
+    if not client.ensure_login():
+        return "not logged in", 401
+    r = client._req('GET', f"{BASE_URL}/{p}")
+    return (client._text(r) if r else "no response"), 200, {'Content-Type': 'text/plain; charset=utf-8'}
 
 @app.route('/debug/<path:p>')
 def debug_html(p):
-    if not client.ensure_login(): return "not logged in",401
-    r=client._req('GET',f"{BASE_URL}/{p}")
-    return (r.text if r else "no response"),200,{'Content-Type':'text/html; charset=utf-8'}
+    if not client.ensure_login():
+        return "not logged in", 401
+    r = client._req('GET', f"{BASE_URL}/{p}")
+    return (r.text if r else "no response"), 200, {'Content-Type': 'text/html; charset=utf-8'}
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
