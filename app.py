@@ -1,6 +1,6 @@
 """
 IVAS SMS Dashboard v5 – Admin number management, live OTP messages, Firebase integration
-Enhanced Firebase error logging
+Improved live SMS parsing.
 """
 import os, re, json, time, gzip, logging
 from datetime import datetime
@@ -153,7 +153,7 @@ def remove_custom_number(number):
         logger.error(f"remove_custom_number failed: {e}")
         return False
 
-# ---------------------- IVAS Client (unchanged) ----------------------
+# ---------------------- IVAS Client ----------------------
 class IVASClient:
     def __init__(self):
         self.scraper    = self._make_scraper()
@@ -296,7 +296,7 @@ class IVASClient:
             return out
         except Exception as e: logger.error(f"fetch_numbers: {e}"); return None
 
-    # Step 1
+    # Step 1: received stats
     def fetch_received_stats(self, from_date='', to_date=''):
         if not self.ensure_login(): return None
         try:
@@ -329,7 +329,7 @@ class IVASClient:
             return result
         except Exception as e: logger.error(f"fetch_received_stats: {e}"); return None
 
-    # Step 2
+    # Step 2: numbers in a range
     def fetch_numbers_in_range(self, phone_range, from_date='', to_date=''):
         if not self.ensure_login(): return []
         try:
@@ -360,7 +360,7 @@ class IVASClient:
             return out
         except Exception as e: logger.error(f"fetch_numbers_in_range: {e}"); return []
 
-    # Step 3
+    # Step 3: OTP for a specific number
     def fetch_otp_for_number(self, phone_number, phone_range, from_date='', to_date=''):
         if not self.ensure_login(): return None
         try:
@@ -402,21 +402,75 @@ class IVASClient:
             if not resp or resp.status_code != 200: return None
             html = self._text(resp)
             soup = BeautifulSoup(html, 'html.parser')
+            # Extract stats from IDs (CountSMS, PaidSMS, UnpaidSMS, RevenueSMS)
             def _t(sid):
-                el=soup.find(id=sid); return el.get_text(strip=True).replace(' USD','').replace(',','') if el else '0'
-            stats={'total':_t('CountSMS'),'paid':_t('PaidSMS'),'unpaid':_t('UnpaidSMS'),'revenue':_t('RevenueSMS')}
-            nums_list=[]; seen=set()
+                el = soup.find(id=sid)
+                if el:
+                    txt = el.get_text(strip=True)
+                    # Remove " USD" and commas, then convert to number
+                    txt = txt.replace(' USD', '').replace(',', '')
+                    return txt
+                return '0'
+            stats = {
+                'total': _t('CountSMS'),
+                'paid': _t('PaidSMS'),
+                'unpaid': _t('UnpaidSMS'),
+                'revenue': _t('RevenueSMS')
+            }
+
+            # Extract numbers from the page (all 10+ digit numbers)
+            nums_list = []
+            seen = set()
             for m in re.finditer(r'\b(\d{10,})\b', html):
-                n=m.group(1)
-                if n not in seen: seen.add(n); nums_list.append(n)
-            sid_rows=[]
-            for row in soup.select('table tbody tr'):
-                cells=[c.get_text(strip=True) for c in row.find_all('td')]
-                if len(cells)>=4:
-                    sid_rows.append({'sid':cells[0],'paid':cells[1],'limit':cells[2],'message':cells[3]})
+                n = m.group(1)
+                if n not in seen:
+                    seen.add(n)
+                    nums_list.append(n)
+
+            # Extract SID rows: look for any table with at least 4 columns
+            sid_rows = []
+            # Try to find the table that contains SID, Paid, Limit, Message
+            tables = soup.find_all('table')
+            for table in tables:
+                rows = table.find_all('tr')
+                # Check if the table has at least 4 columns
+                for row in rows:
+                    cells = row.find_all('td')
+                    if len(cells) >= 4:
+                        sid = cells[0].get_text(strip=True)
+                        paid = cells[1].get_text(strip=True)
+                        limit = cells[2].get_text(strip=True)
+                        message = cells[3].get_text(strip=True)
+                        # Skip empty rows
+                        if sid or message:
+                            sid_rows.append({
+                                'sid': sid,
+                                'paid': paid,
+                                'limit': limit,
+                                'message': message
+                            })
+            # If no rows found, try to extract from divs or other structures
+            if not sid_rows:
+                # Alternative: look for divs with class containing "sms" or "message"
+                for div in soup.find_all('div', class_=re.compile(r'message|sms|content')):
+                    txt = div.get_text(strip=True)
+                    if txt and len(txt) > 5:
+                        sid_rows.append({
+                            'sid': 'N/A',
+                            'paid': '0',
+                            'limit': '0',
+                            'message': txt[:200]
+                        })
             logger.info(f"Live: {stats}, {len(nums_list)} nums, {len(sid_rows)} rows")
-            return {'stats':stats,'sms_today':stats['total'],'numbers':nums_list[:200],'sid_rows':sid_rows}
-        except Exception as e: logger.error(f"fetch_live_sms: {e}"); return None
+            return {
+                'stats': stats,
+                'sms_today': stats['total'],
+                'numbers': nums_list[:200],
+                'sid_rows': sid_rows
+            }
+        except Exception as e:
+            logger.error(f"fetch_live_sms: {e}")
+            return None
 
 # ---------------------- Flask App ----------------------
 app = Flask(__name__)
@@ -576,7 +630,7 @@ def admin_remove_number(number):
     else:
         return jsonify({'error': 'Number not found or remove failed'}), 404
 
-# Debug endpoints (unchanged)
+# Debug endpoints
 @app.route('/debug/raw/<path:p>')
 def debug_raw(p):
     if not client.ensure_login():
@@ -584,12 +638,20 @@ def debug_raw(p):
     r = client._req('GET', f"{BASE_URL}/{p}")
     return (client._text(r) if r else "no response"), 200, {'Content-Type': 'text/plain; charset=utf-8'}
 
-@app.route('/debug/<path:p>')
+@app.route('/debug/html/<path:p>')
 def debug_html(p):
     if not client.ensure_login():
         return "not logged in", 401
     r = client._req('GET', f"{BASE_URL}/{p}")
     return (r.text if r else "no response"), 200, {'Content-Type': 'text/html; charset=utf-8'}
+
+# For debugging the live page directly
+@app.route('/debug/live')
+def debug_live():
+    if not client.ensure_login():
+        return "not logged in", 401
+    r = client._req('GET', f"{BASE_URL}/portal/live/my_sms")
+    return (client._text(r) if r else "no response"), 200, {'Content-Type': 'text/html; charset=utf-8'}
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
