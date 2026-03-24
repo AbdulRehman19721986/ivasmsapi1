@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+    <style>
+        body { background: #0b1120; color: #e2e8f0; font-family: sans-serif; padding: 2rem; }
+        .card { background: #111827; border: 1px solid #1f2d45; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; max-width: 500px; }
+        input, textarea { background: #1a2336; border: 1px solid #1f2d45; color: white; padding: 0.5rem; border-radius: 6px; width: 100%; margin: 0.5rem 0; }
+        button { background: #f97316; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }
+        .msg { margin-top: 0.5rem; font-size: 0.9rem; }
+        .error { color: #ef4444; }
+        .success { color: #22c55e; }
+    </style>
+</head>
+<body>
+    <h1>Admin Dashboard</h1>
+    <div class="card">
+        <h3>Change Admin Password</h3>
+        <input type="password" id="new_pass" placeholder="New password">
+        <button onclick="changePass()">Update Password</button>
+        <div id="pass_msg" class="msg"></div>
+    </div>
+    <div class="card">
+        <h3>Edit Announcement</h3>
+        <textarea id="announce_text" rows="3" placeholder="Announcement message">{{ announcement }}</textarea>
+        <button onclick="updateAnnounce()">Update Announcement</button>
+        <div id="ann_msg" class="msg"></div>
+    </div>
+    <a href="/admin/logout">Logout</a>
+
+    <script>
+        async function changePass() {
+            const pass = document.getElementById('new_pass').value;
+            if (!pass) return;
+            const res = await fetch('/admin/change-password', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({new_password: pass})
+            });
+            const data = await res.json();
+            const msg = document.getElementById('pass_msg');
+            msg.textContent = data.success ? 'Password updated!' : 'Error';
+            msg.className = 'msg ' + (data.success ? 'success' : 'error');
+        }
+        async function updateAnnounce() {
+            const msgText = document.getElementById('announce_text').value;
+            const res = await fetch('/admin/update-announcement', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({message: msgText})
+            });
+            const data = await res.json();
+            const msg = document.getElementById('ann_msg');
+            msg.textContent = data.success ? 'Announcement updated!' : 'Error';
+            msg.className = 'msg ' + (data.success ? 'success' : 'error');
+        }
+    </script>
+</body>
+</html>
