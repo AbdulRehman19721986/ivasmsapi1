@@ -168,13 +168,13 @@
             return;
         }
         const numbers = data.numbers;
-        if (numbers.length === 0) {
+        if (!numbers.length) {
             document.getElementById('numbersList').innerHTML = '<div class="loading">No numbers found.</div>';
             return;
         }
-        let html = '<table><thead><tr><th>Number</th><th>Details</th></tr></thead><tbody>';
+        let html = ' <thead> <th>Number</th><th>Details</th> </thead> <tbody>';
         numbers.forEach(num => {
-            html += `<tr><td>${num.number}</td><td>${num.details.join(', ')}</td></tr>`;
+            html += ` <td>${num.number}</td><td>${num.details.join(', ')}</td> `;
         });
         html += '</tbody></table>';
         document.getElementById('numbersList').innerHTML = html;
@@ -195,7 +195,7 @@
 
         // Update messages
         const messages = data.messages;
-        if (messages.length === 0) {
+        if (!messages.length) {
             document.getElementById('messageList').innerHTML = '<div class="loading">No new messages.</div>';
             return;
         }
@@ -240,7 +240,6 @@
         }
     });
 
-    // Initial load
     refreshDashboard();
     startAutoRefresh();
 </script>
