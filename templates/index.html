@@ -85,7 +85,7 @@
             border-bottom: 1px solid #334155;
         }
         th { color: #f97316; }
-        .message-list { max-height: 500px; overflow-y: auto; }
+        .message-list { max-height: 400px; overflow-y: auto; }
         .message-card {
             background: #1e293b;
             border-radius: 12px;
@@ -121,6 +121,7 @@
         <p>Real‑time OTP Monitoring | Powered by Abdul Rehman Rajpoot</p>
     </div>
 
+    <!-- Stats will be filled by JavaScript -->
     <div class="stats-grid" id="statsGrid">
         <div class="stat-card"><div class="stat-value" id="totalSMS">-</div><div class="stat-label">Total SMS</div></div>
         <div class="stat-card"><div class="stat-value" id="paidSMS">-</div><div class="stat-label">Paid SMS</div></div>
@@ -142,8 +143,13 @@
     </div>
 
     <div class="section">
-        <h2>📩 Incoming OTP Messages</h2>
-        <div id="messageList"><div class="loading">Loading messages...</div></div>
+        <h2>📩 Received SMS (from /portal/sms/received)</h2>
+        <div id="receivedList"><div class="loading">Loading received messages...</div></div>
+    </div>
+
+    <div class="section">
+        <h2>⚡ Live SMS (from /portal/live/my_sms)</h2>
+        <div id="liveList"><div class="loading">Loading live messages...</div></div>
     </div>
 
     <div class="footer">
@@ -160,65 +166,93 @@
 <script>
     let refreshInterval = null;
 
-    async function fetchNumbers() {
-        const res = await fetch('/api/numbers');
+    async function fetchAll() {
+        const res = await fetch('/api/all');
         const data = await res.json();
         if (data.error) {
             document.getElementById('numbersList').innerHTML = `<div class="loading error">⚠️ ${data.error}</div>`;
+            document.getElementById('receivedList').innerHTML = `<div class="loading error">⚠️ ${data.error}</div>`;
+            document.getElementById('liveList').innerHTML = `<div class="loading error">⚠️ ${data.error}</div>`;
             return;
         }
+
+        // Numbers
         const numbers = data.numbers;
-        if (!numbers.length) {
+        if (numbers && numbers.length) {
+            let html = ' <thead> <th>Number</th><th>Details</th> </thead> <tbody>';
+            numbers.forEach(num => {
+                html += `  <td>${num.number}</td><td>${num.details.join(', ')}</td>  `;
+            });
+            html += '</tbody></table>';
+            document.getElementById('numbersList').innerHTML = html;
+        } else {
             document.getElementById('numbersList').innerHTML = '<div class="loading">No numbers found.</div>';
-            return;
         }
-        let html = ' <thead> <th>Number</th><th>Details</th> </thead> <tbody>';
-        numbers.forEach(num => {
-            html += ` <td>${num.number}</td><td>${num.details.join(', ')}</td> `;
-        });
-        html += '</tbody></table>';
-        document.getElementById('numbersList').innerHTML = html;
-    }
 
-    async function fetchLive() {
-        const res = await fetch('/api/live');
-        const data = await res.json();
-        if (data.error) {
-            document.getElementById('messageList').innerHTML = `<div class="loading error">⚠️ ${data.error}</div>`;
-            return;
-        }
-        // Update stats
-        document.getElementById('totalSMS').innerText = data.stats.total;
-        document.getElementById('paidSMS').innerText = data.stats.paid;
-        document.getElementById('unpaidSMS').innerText = data.stats.unpaid;
-        document.getElementById('revenue').innerText = data.stats.revenue;
+        // Received SMS stats & messages
+        const received = data.received;
+        if (received) {
+            // Update stats (using received stats as primary)
+            document.getElementById('totalSMS').innerText = received.stats.count;
+            document.getElementById('paidSMS').innerText = received.stats.paid;
+            document.getElementById('unpaidSMS').innerText = received.stats.unpaid;
+            document.getElementById('revenue').innerText = received.stats.revenue;
 
-        // Update messages
-        const messages = data.messages;
-        if (!messages.length) {
-            document.getElementById('messageList').innerHTML = '<div class="loading">No new messages.</div>';
-            return;
+            // Display messages
+            const recvMessages = received.messages;
+            if (recvMessages && recvMessages.length) {
+                let html = '';
+                recvMessages.forEach(msg => {
+                    html += `
+                        <div class="message-card">
+                            <div class="message-header">
+                                <span class="message-sender">📱 ${msg.sender}</span>
+                                <span class="message-time">🕒 ${msg.time}</span>
+                                <span>💰 ${msg.revenue} USD</span>
+                            </div>
+                            <div class="message-text">💬 ${msg.message}</div>
+                        </div>
+                    `;
+                });
+                document.getElementById('receivedList').innerHTML = html;
+            } else {
+                document.getElementById('receivedList').innerHTML = '<div class="loading">No received messages.</div>';
+            }
+        } else {
+            document.getElementById('receivedList').innerHTML = '<div class="loading error">Failed to load received SMS.</div>';
         }
-        let html = '';
-        messages.forEach(msg => {
-            html += `
-                <div class="message-card">
-                    <div class="message-header">
-                        <span class="message-sender">📱 ${msg.sender}</span>
-                        <span class="message-time">🕒 ${msg.time}</span>
-                        <span>💰 ${msg.revenue} USD</span>
-                    </div>
-                    <div class="message-text">💬 ${msg.message}</div>
-                </div>
-            `;
-        });
-        document.getElementById('messageList').innerHTML = html;
+
+        // Live SMS
+        const live = data.live;
+        if (live) {
+            const liveMessages = live.messages;
+            if (liveMessages && liveMessages.length) {
+                let html = '';
+                liveMessages.forEach(msg => {
+                    html += `
+                        <div class="message-card">
+                            <div class="message-header">
+                                <span class="message-sender">📱 ${msg.sender}</span>
+                                <span class="message-time">🕒 ${msg.time}</span>
+                                <span>💰 ${msg.revenue} USD</span>
+                            </div>
+                            <div class="message-text">💬 ${msg.message}</div>
+                        </div>
+                    `;
+                });
+                document.getElementById('liveList').innerHTML = html;
+            } else {
+                document.getElementById('liveList').innerHTML = '<div class="loading">No live messages.</div>';
+            }
+        } else {
+            document.getElementById('liveList').innerHTML = '<div class="loading error">Failed to load live SMS.</div>';
+        }
     }
 
     async function refreshDashboard() {
         const status = document.getElementById('statusBadge');
         status.innerHTML = '🟡 Updating...';
-        await Promise.all([fetchNumbers(), fetchLive()]);
+        await fetchAll();
         status.innerHTML = '🟢 Live';
     }
 
