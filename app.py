@@ -47,7 +47,7 @@ class IVASAutoClient:
         return None
 
     def login(self):
-        logger.info("Attempting login with credentials...")
+        logger.info("Attempting login...")
         try:
             # 1. Get login page to extract CSRF token
             resp = self._request_with_retry('GET', f"{self.base_url}/login")
@@ -59,7 +59,6 @@ class IVASAutoClient:
             csrf_token = soup.find('input', {'name': '_token'})
             if not csrf_token:
                 logger.error("No CSRF token found on login page.")
-                logger.info(f"Login page HTML (first 500 chars): {resp.text[:500]}")
                 return False
             csrf_token = csrf_token['value']
 
@@ -71,41 +70,41 @@ class IVASAutoClient:
                 'remember': '1'
             }
             login_resp = self._request_with_retry('POST', f"{self.base_url}/login", data=payload, allow_redirects=False)
-            logger.info(f"Login POST response status: {login_resp.status_code}")
-            logger.info(f"Login POST headers: {login_resp.headers}")
+            logger.info(f"Login POST status: {login_resp.status_code}")
 
+            # 3. Follow redirect (if any)
             if login_resp.status_code in [302, 301]:
                 redirect_url = login_resp.headers.get('Location')
-                logger.info(f"Redirect to: {redirect_url}")
-                # Build absolute URL if needed
                 if redirect_url.startswith('/'):
                     redirect_url = self.base_url + redirect_url
                 follow_resp = self._request_with_retry('GET', redirect_url)
-                logger.info(f"Follow redirect status: {follow_resp.status_code}")
-                if follow_resp.status_code == 200:
-                    # Check if we are logged in
-                    soup = BeautifulSoup(follow_resp.text, 'html.parser')
-                    if self._is_logged_in(soup):
-                        self.logged_in = True
-                        self.csrf_token = self._extract_csrf(soup)
-                        logger.info("Login successful.")
-                        return True
-                    else:
-                        logger.warning("Redirect page does not show logged-in state.")
-                        logger.info(f"Redirect page HTML (first 500 chars): {follow_resp.text[:500]}")
-                else:
+                if follow_resp.status_code != 200:
                     logger.error(f"Failed to follow redirect: {follow_resp.status_code}")
-            elif login_resp.status_code == 200:
-                # No redirect; maybe the login returns the dashboard directly
-                soup = BeautifulSoup(login_resp.text, 'html.parser')
-                if self._is_logged_in(soup):
+                    return False
+                # After redirect, we may be at /portal or /dashboard.
+                # Now explicitly fetch the profile page to confirm login.
+                profile_resp = self._request_with_retry('GET', f"{self.base_url}/portal/profile")
+                if profile_resp.status_code != 200:
+                    logger.error("Could not access profile page after login.")
+                    return False
+                # Check if profile page contains account code or logout link
+                if self._is_logged_in(profile_resp.text):
                     self.logged_in = True
-                    self.csrf_token = self._extract_csrf(soup)
+                    self.csrf_token = self._extract_csrf_from_html(profile_resp.text)
+                    if not self.csrf_token:
+                        # Fallback to extracting from portal page
+                        portal_resp = self._request_with_retry('GET', f"{self.base_url}/portal")
+                        if portal_resp.status_code == 200:
+                            self.csrf_token = self._extract_csrf_from_html(portal_resp.text)
                     logger.info("Login successful.")
                     return True
-                else:
-                    logger.warning("Login response 200 but not logged in.")
-                    logger.info(f"Login response HTML (first 500 chars): {login_resp.text[:500]}")
+            elif login_resp.status_code == 200:
+                # No redirect; check if we are already on a dashboard page
+                if self._is_logged_in(login_resp.text):
+                    self.logged_in = True
+                    self.csrf_token = self._extract_csrf_from_html(login_resp.text)
+                    logger.info("Login successful.")
+                    return True
             else:
                 logger.error(f"Login POST returned {login_resp.status_code}")
 
@@ -116,27 +115,20 @@ class IVASAutoClient:
             logger.error(f"Login error: {e}")
             return False
 
-    def _is_logged_in(self, soup):
-        """Check if the page indicates a logged-in user."""
+    def _is_logged_in(self, html_content):
+        """Check if the given HTML indicates a logged-in user."""
+        soup = BeautifulSoup(html_content, 'html.parser')
         # Look for logout link
-        logout = soup.find('a', href=re.compile(r'/logout'))
-        if logout:
+        if soup.find('a', href=re.compile(r'/logout')):
             return True
-        # Look for account code text
-        account_code = soup.find(text=re.compile(r'Account Code'))
+        # Look for account code text (e.g., "Account Code : 8925533735")
+        account_code = soup.find(text=re.compile(r'Account Code\s*:\s*\d+'))
         if account_code:
-            return True
-        # Look for dashboard elements
-        dashboard = soup.find('a', href=re.compile(r'/portal'))
-        if dashboard:
-            return True
-        # Look for any text that suggests a logged-in user (like "Welcome")
-        welcome = soup.find(text=re.compile(r'Welcome|Dashboard'))
-        if welcome:
             return True
         return False
 
-    def _extract_csrf(self, soup):
+    def _extract_csrf_from_html(self, html_content):
+        soup = BeautifulSoup(html_content, 'html.parser')
         token_input = soup.find('input', {'name': '_token'})
         return token_input['value'] if token_input else None
 
@@ -144,13 +136,16 @@ class IVASAutoClient:
         """Check if session is still alive; if not, re‑login."""
         if not self.logged_in:
             return self.login()
+        # Check by fetching profile page
         try:
-            test = self._request_with_retry('GET', f"{self.base_url}/portal")
-            if test.status_code == 200:
-                soup = BeautifulSoup(test.text, 'html.parser')
-                if self._is_logged_in(soup):
-                    self.csrf_token = self._extract_csrf(soup)
-                    return True
+            profile_resp = self._request_with_retry('GET', f"{self.base_url}/portal/profile")
+            if profile_resp.status_code == 200 and self._is_logged_in(profile_resp.text):
+                self.csrf_token = self._extract_csrf_from_html(profile_resp.text)
+                if not self.csrf_token:
+                    portal_resp = self._request_with_retry('GET', f"{self.base_url}/portal")
+                    if portal_resp.status_code == 200:
+                        self.csrf_token = self._extract_csrf_from_html(portal_resp.text)
+                return True
         except Exception:
             pass
         logger.warning("Session expired, re‑logging in.")
@@ -351,7 +346,7 @@ def api_all():
         'live': live
     })
 
-# Debug endpoints
+# Debug endpoint
 @app.route('/debug/<page>')
 def debug_page(page):
     if not client.ensure_login():
@@ -370,13 +365,11 @@ def debug_page(page):
 
 @app.route('/test-login')
 def test_login():
-    """Performs a fresh login and returns the HTML of the page after login."""
-    # Create a temporary client to avoid interfering with the main client's state
     temp_client = IVASAutoClient(IVAS_EMAIL, IVAS_PASSWORD)
     if temp_client.login():
-        # After login, get the portal page and return its HTML
-        portal_resp = temp_client._request_with_retry('GET', f"{temp_client.base_url}/portal")
-        return portal_resp.text
+        # After successful login, fetch the profile page and return its HTML
+        profile_resp = temp_client._request_with_retry('GET', f"{temp_client.base_url}/portal/profile")
+        return profile_resp.text
     else:
         return "Login failed", 401
 
