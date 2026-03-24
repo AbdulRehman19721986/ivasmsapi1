@@ -3,779 +3,514 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>IVAS SMS Dashboard – Abdul Rehman</title>
+<title>IVAS OTP Dashboard – Abdul Rehman</title>
 <style>
-/* ── Reset & Base ── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
-  --bg:       #0b1120;
-  --bg2:      #111827;
-  --bg3:      #1a2336;
-  --border:   #1f2d45;
-  --accent:   #f97316;
-  --accent2:  #fb923c;
-  --green:    #22c55e;
-  --red:      #ef4444;
-  --blue:     #3b82f6;
-  --yellow:   #eab308;
-  --text:     #e2e8f0;
-  --muted:    #64748b;
-  --card-r:   14px;
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b1120;--bg2:#111827;--bg3:#1a2336;--border:#1f2d45;
+  --accent:#f97316;--a2:#fb923c;--green:#22c55e;--red:#ef4444;
+  --blue:#3b82f6;--yellow:#eab308;--text:#e2e8f0;--muted:#64748b;--r:12px;
 }
-html { font-size: 15px; }
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  min-height: 100vh;
-}
+html{font-size:14px}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;display:flex}
 
-/* ── Layout ── */
-.app { display: flex; min-height: 100vh; }
+/* Sidebar */
+.sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;height:100vh;position:sticky;top:0;overflow-y:auto}
+.logo{padding:20px 16px 14px;border-bottom:1px solid var(--border)}
+.logo h1{font-size:1.1rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--a2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.logo p{font-size:.65rem;color:var(--muted);margin-top:2px}
+.nav{padding:12px 8px;flex:1}
+.nl{font-size:.6rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);padding:10px 10px 4px}
+.ni{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:.83rem;color:var(--muted);transition:all .15s;border:none;background:none;width:100%;text-align:left}
+.ni:hover{background:var(--bg3);color:var(--text)}
+.ni.active{background:rgba(249,115,22,.13);color:var(--accent);font-weight:600}
+.ni-ic{width:16px;text-align:center}
+.sfooter{padding:12px 14px;border-top:1px solid var(--border);font-size:.72rem;color:var(--muted)}
+.sdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:5px;animation:pulse 2s infinite}
+.sdot.off{background:var(--red);animation:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 
-/* ── Sidebar ── */
-.sidebar {
-  width: 240px;
-  background: var(--bg2);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  overflow-y: auto;
-}
-.sidebar-logo {
-  padding: 22px 20px 16px;
-  border-bottom: 1px solid var(--border);
-}
-.sidebar-logo h1 {
-  font-size: 1.15rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  letter-spacing: .3px;
-}
-.sidebar-logo p { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+/* Main */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);height:52px;padding:0 22px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:20}
+.tb-title{font-weight:700;font-size:.95rem}
+.tb-r{display:flex;align-items:center;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:7px;border:none;cursor:pointer;font-size:.78rem;font-weight:600;transition:all .15s}
+.btn-p{background:linear-gradient(135deg,var(--accent),var(--a2));color:#fff}
+.btn-p:hover{opacity:.85;transform:translateY(-1px)}
+.btn-s{background:var(--bg3);color:var(--text);border:1px solid var(--border)}
+.btn-s:hover{border-color:var(--accent);color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none!important}
+.badge{background:rgba(249,115,22,.14);color:var(--accent);border:1px solid rgba(249,115,22,.3);border-radius:16px;padding:2px 10px;font-size:.7rem;font-weight:700}
+.live-pill{display:inline-flex;align-items:center;gap:4px;background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3);border-radius:16px;padding:2px 9px;font-size:.67rem;font-weight:700;text-transform:uppercase}
+.ldot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 1.4s infinite}
+.toggle{display:flex;align-items:center;gap:6px;font-size:.75rem;color:var(--muted);cursor:pointer}
+.toggle input{accent-color:var(--accent);width:14px;height:14px;cursor:pointer}
 
-.sidebar-nav { padding: 14px 10px; flex: 1; }
-.nav-label {
-  font-size: .65rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--muted);
-  padding: 0 10px;
-  margin: 12px 0 6px;
-}
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  border-radius: 9px;
-  cursor: pointer;
-  font-size: .88rem;
-  color: var(--muted);
-  transition: all .18s;
-  text-decoration: none;
-}
-.nav-item:hover { background: var(--bg3); color: var(--text); }
-.nav-item.active { background: rgba(249,115,22,.12); color: var(--accent); font-weight: 600; }
-.nav-icon { width: 18px; text-align: center; font-size: 1rem; }
+/* Content */
+.content{padding:20px 22px;overflow-y:auto;flex:1}
+.page{display:none}.page.active{display:block}
 
-.sidebar-footer {
-  padding: 14px 16px;
-  border-top: 1px solid var(--border);
-}
-.status-dot {
-  display: inline-block;
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--green);
-  margin-right: 6px;
-  animation: pulse 2s infinite;
-}
-.status-dot.offline { background: var(--red); animation: none; }
-@keyframes pulse {
-  0%,100% { opacity: 1; }
-  50%      { opacity: .4; }
-}
-.sidebar-status { font-size: .75rem; color: var(--muted); }
+/* Stats grid */
+.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:14px;margin-bottom:18px}
+.sc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;position:relative;overflow:hidden;transition:border-color .2s}
+.sc:hover{border-color:var(--accent)}
+.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--a2));border-radius:var(--r) var(--r) 0 0}
+.sc-icon{font-size:1.25rem;margin-bottom:8px}
+.sc-v{font-size:1.75rem;font-weight:800;color:var(--accent);line-height:1}
+.sc-l{font-size:.67rem;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.5px}
 
-/* ── Main ── */
-.main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+/* Section */
+.sec{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:18px;overflow:hidden}
+.sh{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+.st{font-size:.88rem;font-weight:700;display:flex;align-items:center;gap:7px}
+.sb{padding:0}
 
-/* ── Topbar ── */
-.topbar {
-  background: var(--bg2);
-  border-bottom: 1px solid var(--border);
-  padding: 0 26px;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-.topbar-title { font-weight: 700; font-size: 1rem; }
-.topbar-right { display: flex; align-items: center; gap: 12px; }
-.badge {
-  background: rgba(249,115,22,.15);
-  color: var(--accent);
-  border: 1px solid rgba(249,115,22,.3);
-  border-radius: 20px;
-  padding: 3px 11px;
-  font-size: .73rem;
-  font-weight: 600;
-}
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 16px;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  font-size: .82rem;
-  font-weight: 600;
-  transition: all .18s;
-}
-.btn-primary {
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  color: #fff;
-}
-.btn-primary:hover { opacity: .88; transform: translateY(-1px); }
-.btn-secondary {
-  background: var(--bg3);
-  color: var(--text);
-  border: 1px solid var(--border);
-}
-.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
-.btn:disabled { opacity: .5; cursor: not-allowed; transform: none !important; }
+/* Table */
+.tw{overflow-x:auto;max-height:460px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+thead{position:sticky;top:0;z-index:2}
+thead tr{background:var(--bg3)}
+th{padding:10px 14px;text-align:left;font-size:.65rem;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);font-weight:600;white-space:nowrap}
+td{padding:10px 14px;border-top:1px solid var(--border);vertical-align:middle}
+tr:hover td{background:rgba(255,255,255,.022)}
 
-/* ── Content ── */
-.content { padding: 24px 26px; overflow-y: auto; flex: 1; }
+/* Chips */
+.otp-chip{display:inline-block;background:rgba(249,115,22,.15);color:var(--accent);border:1px solid rgba(249,115,22,.35);border-radius:5px;padding:2px 8px;font-weight:800;font-family:monospace;font-size:.95rem;letter-spacing:2.5px}
+.num-chip{font-family:monospace;background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:2px 8px;font-size:.83rem}
+.rev-badge{background:rgba(34,197,94,.12);color:var(--green);border-radius:4px;padding:2px 7px;font-size:.73rem;font-weight:700;white-space:nowrap}
+.range-badge{background:rgba(59,130,246,.12);color:var(--blue);border-radius:4px;padding:2px 7px;font-size:.72rem;white-space:nowrap}
+.msg-text{max-width:320px;word-break:break-word;line-height:1.45}
 
-/* ── Page ── */
-.page { display: none; }
-.page.active { display: block; }
+/* Empty / skeleton */
+.empty{text-align:center;padding:46px 20px;color:var(--muted)}
+.empty .ei{font-size:2.4rem;margin-bottom:8px}
+.empty h3{font-size:.88rem;color:var(--text);margin-bottom:3px}
+.empty p{font-size:.75rem}
+.sk{background:linear-gradient(90deg,var(--bg3) 25%,var(--border) 50%,var(--bg3) 75%);background-size:200% 100%;animation:shimmer 1.3s infinite;border-radius:5px;height:12px;width:100%}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
 
-/* ── Stats Grid ── */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
-  margin-bottom: 22px;
-}
-.stat-card {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: var(--card-r);
-  padding: 20px;
-  position: relative;
-  overflow: hidden;
-  transition: border-color .2s;
-}
-.stat-card:hover { border-color: var(--accent); }
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--accent), var(--accent2));
-  border-radius: var(--card-r) var(--card-r) 0 0;
-}
-.stat-icon { font-size: 1.4rem; margin-bottom: 10px; }
-.stat-value { font-size: 1.9rem; font-weight: 700; color: var(--accent); line-height: 1; }
-.stat-label { font-size: .73rem; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: .5px; }
-.stat-change { font-size: .72rem; margin-top: 5px; }
-.stat-change.up   { color: var(--green); }
-.stat-change.down { color: var(--red); }
+/* Search */
+.sbox{background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:6px 11px;color:var(--text);font-size:.78rem;width:185px;outline:none;transition:border-color .2s}
+.sbox:focus{border-color:var(--accent)}
+.sbox::placeholder{color:var(--muted)}
 
-/* ── Section ── */
-.section {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: var(--card-r);
-  margin-bottom: 20px;
-  overflow: hidden;
-}
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
-}
-.section-title {
-  font-size: .93rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.section-body { padding: 0; }
+/* Alert */
+.alert{padding:11px 14px;border-radius:8px;font-size:.78rem;margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.ae{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#fca5a5}
+.as{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:#86efac}
 
-/* ── Table ── */
-.table-wrap { overflow-x: auto; max-height: 420px; overflow-y: auto; }
-table { width: 100%; border-collapse: collapse; font-size: .84rem; }
-thead { position: sticky; top: 0; z-index: 2; }
-thead tr { background: var(--bg3); }
-th {
-  padding: 11px 16px;
-  text-align: left;
-  font-size: .7rem;
-  text-transform: uppercase;
-  letter-spacing: .7px;
-  color: var(--muted);
-  font-weight: 600;
-  white-space: nowrap;
-}
-td {
-  padding: 11px 16px;
-  border-top: 1px solid var(--border);
-  vertical-align: middle;
-}
-tr:hover td { background: rgba(255,255,255,.025); }
+/* Date filter */
+.df{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.df input{background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:5px 10px;color:var(--text);font-size:.75rem;outline:none;transition:border-color .2s}
+.df input:focus{border-color:var(--accent)}
 
-/* ── OTP Highlight ── */
-.otp-chip {
-  display: inline-block;
-  background: rgba(249,115,22,.15);
-  color: var(--accent);
-  border: 1px solid rgba(249,115,22,.35);
-  border-radius: 6px;
-  padding: 2px 9px;
-  font-weight: 700;
-  font-family: monospace;
-  font-size: .95rem;
-  letter-spacing: 2px;
-}
-.msg-text { max-width: 340px; word-break: break-word; line-height: 1.4; }
-.revenue-badge {
-  background: rgba(34,197,94,.12);
-  color: var(--green);
-  border-radius: 5px;
-  padding: 2px 8px;
-  font-size: .78rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.number-chip {
-  font-family: monospace;
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 3px 10px;
-  font-size: .88rem;
-}
+/* Scrollbar */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px}
+::-webkit-scrollbar-thumb:hover{background:var(--muted)}
 
-/* ── Empty / Loading ── */
-.empty-state {
-  text-align: center;
-  padding: 52px 20px;
-  color: var(--muted);
+/* Numbers list */
+.nl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:10px;padding:16px}
+.nc{background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:12px 14px}
+.nc-num{font-family:monospace;font-size:.9rem;color:var(--accent);font-weight:700}
+.nc-info{font-size:.67rem;color:var(--muted);margin-top:4px}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{display:inline-block;animation:spin .6s linear infinite}
+
+@media(max-width:700px){
+  .sidebar{width:48px}
+  .logo p,.ni span,.nl,.sfooter span{display:none}
+  .logo h1{font-size:.75rem}
+  .ni{justify-content:center;padding:9px}
+  .content{padding:14px}
+  .sg{grid-template-columns:1fr 1fr}
 }
-.empty-state .icon { font-size: 2.5rem; margin-bottom: 10px; }
-.empty-state h3 { font-size: .95rem; margin-bottom: 4px; color: var(--text); }
-.empty-state p  { font-size: .8rem; }
-
-.skeleton {
-  background: linear-gradient(90deg, var(--bg3) 25%, var(--border) 50%, var(--bg3) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite;
-  border-radius: 6px;
-  height: 14px;
-  width: 100%;
-}
-@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-
-/* ── Alert ── */
-.alert {
-  padding: 12px 16px;
-  border-radius: 9px;
-  font-size: .83rem;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.alert-error   { background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.3); color: #fca5a5; }
-.alert-success { background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.3); color: #86efac; }
-.alert-warning { background: rgba(234,179,8,.12); border: 1px solid rgba(234,179,8,.3); color: #fde68a; }
-
-/* ── Auto-refresh toggle ── */
-.toggle { display: flex; align-items: center; gap: 8px; font-size: .8rem; color: var(--muted); cursor: pointer; }
-.toggle input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; }
-
-/* ── Live indicator ── */
-.live-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: rgba(34,197,94,.12);
-  color: var(--green);
-  border: 1px solid rgba(34,197,94,.3);
-  border-radius: 20px;
-  padding: 3px 10px;
-  font-size: .7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .5px;
-}
-.live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 1.5s infinite; }
-
-/* ── Search ── */
-.search-box {
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 7px 12px;
-  color: var(--text);
-  font-size: .83rem;
-  width: 200px;
-  outline: none;
-  transition: border-color .2s;
-}
-.search-box:focus { border-color: var(--accent); }
-.search-box::placeholder { color: var(--muted); }
-
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: var(--muted); }
-
-/* ── Responsive ── */
-@media (max-width: 768px) {
-  .sidebar { width: 56px; }
-  .sidebar-logo p, .nav-item span, .nav-label, .sidebar-footer { display: none; }
-  .nav-icon { font-size: 1.15rem; }
-  .nav-item { justify-content: center; padding: 10px; }
-  .content { padding: 16px; }
-  .topbar { padding: 0 16px; }
-  .stats-grid { grid-template-columns: 1fr 1fr; }
-}
-
-/* ── Spinner ── */
-@keyframes spin { to { transform: rotate(360deg); } }
-.spin { display: inline-block; animation: spin .7s linear infinite; }
 </style>
 </head>
 <body>
-<div class="app">
 
-  <!-- Sidebar -->
-  <nav class="sidebar">
-    <div class="sidebar-logo">
-      <h1>📡 IVAS SMS</h1>
-      <p>Premium Dashboard</p>
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="logo">
+    <h1>📡 IVAS SMS</h1>
+    <p>Abdul Rehman · Premium</p>
+  </div>
+  <div class="nav">
+    <div class="nl">Main</div>
+    <button class="ni active" onclick="go('dashboard',this)"><span class="ni-ic">🏠</span><span>Dashboard</span></button>
+    <button class="ni" onclick="go('otps',this)"><span class="ni-ic">🔑</span><span>OTPs / Received</span></button>
+    <button class="ni" onclick="go('live',this)"><span class="ni-ic">⚡</span><span>Live SMS</span></button>
+    <button class="ni" onclick="go('numbers',this)"><span class="ni-ic">📱</span><span>My Numbers</span></button>
+  </div>
+  <div class="sfooter">
+    <span class="sdot" id="sdot"></span><span id="sstatus">Connecting…</span>
+  </div>
+</nav>
+
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <span class="tb-title" id="tbtitle">Dashboard</span>
+    <div class="tb-r">
+      <span id="lpill" class="live-pill" style="display:none"><span class="ldot"></span>LIVE</span>
+      <label class="toggle"><input type="checkbox" id="autoR" checked/><span>Auto</span></label>
+      <button class="btn btn-s btn-sm" id="loginBtn" onclick="forceLogin()" style="font-size:.7rem;padding:5px 10px">🔑 Re-Auth</button>
+      <button class="btn btn-p" id="refBtn"><span id="refIco">🔄</span> Refresh</button>
     </div>
-    <div class="sidebar-nav">
-      <div class="nav-label">Main</div>
-      <a class="nav-item active" data-page="dashboard" onclick="showPage('dashboard',this)">
-        <span class="nav-icon">🏠</span><span>Dashboard</span>
-      </a>
-      <a class="nav-item" data-page="live" onclick="showPage('live',this)">
-        <span class="nav-icon">⚡</span><span>Live SMS</span>
-      </a>
-      <a class="nav-item" data-page="received" onclick="showPage('received',this)">
-        <span class="nav-icon">📥</span><span>Received SMS</span>
-      </a>
-      <a class="nav-item" data-page="numbers" onclick="showPage('numbers',this)">
-        <span class="nav-icon">📱</span><span>My Numbers</span>
-      </a>
-    </div>
-    <div class="sidebar-footer">
-      <span class="status-dot" id="statusDot"></span>
-      <span class="sidebar-status" id="sidebarStatus">Connecting…</span>
-    </div>
-  </nav>
+  </div>
 
-  <!-- Main -->
-  <div class="main">
+  <div class="content">
+    <div id="galert" style="display:none"></div>
 
-    <!-- Topbar -->
-    <div class="topbar">
-      <div class="topbar-title" id="topbarTitle">Dashboard</div>
-      <div class="topbar-right">
-        <span id="livePill" class="live-pill" style="display:none">
-          <span class="live-dot"></span>LIVE
-        </span>
-        <label class="toggle">
-          <input type="checkbox" id="autoRefresh" checked/>
-          <span>Auto-refresh</span>
-        </label>
-        <button class="btn btn-primary" id="refreshBtn">
-          <span id="refreshIcon">🔄</span> Refresh
-        </button>
+    <!-- Dashboard -->
+    <div class="page active" id="page-dashboard">
+      <div class="sg" id="dStats">
+        <div class="sc"><div class="sk" style="height:60px"></div></div>
+        <div class="sc"><div class="sk" style="height:60px"></div></div>
+        <div class="sc"><div class="sk" style="height:60px"></div></div>
+        <div class="sc"><div class="sk" style="height:60px"></div></div>
+      </div>
+      <div class="sec">
+        <div class="sh"><span class="st">🔑 Latest OTPs Received</span><span class="badge" id="dOtpCnt">–</span></div>
+        <div class="sb"><div class="tw"><table>
+          <thead><tr><th>#</th><th>Number</th><th>Range</th><th>OTP / Message</th><th>Revenue</th></tr></thead>
+          <tbody id="dOtpBody"><tr><td colspan="5"><div class="empty"><div class="sk"></div></div></td></tr></tbody>
+        </table></div></div>
+      </div>
+      <div class="sec">
+        <div class="sh"><span class="st">⚡ Live SMS Numbers</span><span class="badge" id="dLiveCnt">–</span></div>
+        <div class="sb"><div id="dLiveNums" style="padding:14px 16px;display:flex;flex-wrap:wrap;gap:8px"></div></div>
       </div>
     </div>
 
-    <!-- Content -->
-    <div class="content">
-      <div id="globalAlert" style="display:none"></div>
-
-      <!-- ─── Dashboard Page ─── -->
-      <div class="page active" id="page-dashboard">
-        <div class="stats-grid" id="statCards">
-          <!-- Populated by JS -->
-          <div class="stat-card"><div class="skeleton" style="height:70px"></div></div>
-          <div class="stat-card"><div class="skeleton" style="height:70px"></div></div>
-          <div class="stat-card"><div class="skeleton" style="height:70px"></div></div>
-          <div class="stat-card"><div class="skeleton" style="height:70px"></div></div>
-        </div>
-
-        <div class="section">
-          <div class="section-header">
-            <span class="section-title">⚡ Latest Live OTPs</span>
-            <span class="badge" id="liveCount">–</span>
-          </div>
-          <div class="section-body">
-            <div class="table-wrap">
-              <table id="dashLiveTable">
-                <thead><tr><th>From</th><th>OTP / Message</th><th>Time</th><th>Revenue</th></tr></thead>
-                <tbody id="dashLiveBody"><tr><td colspan="4"><div class="empty-state"><div class="skeleton"></div></div></td></tr></tbody>
-              </table>
-            </div>
+    <!-- OTPs Page -->
+    <div class="page" id="page-otps">
+      <div class="sg" id="otpStats"></div>
+      <div class="sec">
+        <div class="sh">
+          <span class="st">🔑 All OTP Messages</span>
+          <div class="df">
+            <input type="date" id="fromDate" title="Start date"/>
+            <input type="date" id="toDate"   title="End date"/>
+            <button class="btn btn-p" onclick="loadOtps()">Get OTPs</button>
+            <input class="sbox" id="otpSearch" placeholder="Search…" oninput="ft('otpBody',this.value)"/>
+            <span class="badge" id="otpTotal">–</span>
           </div>
         </div>
-
-        <div class="section">
-          <div class="section-header">
-            <span class="section-title">📥 Recent Received SMS</span>
-            <span class="badge" id="receivedCount">–</span>
-          </div>
-          <div class="section-body">
-            <div class="table-wrap">
-              <table id="dashRecvTable">
-                <thead><tr><th>From</th><th>Message</th><th>Time</th><th>Revenue</th></tr></thead>
-                <tbody id="dashRecvBody"><tr><td colspan="4"><div class="empty-state"><div class="skeleton"></div></div></td></tr></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <div class="sb"><div class="tw"><table>
+          <thead><tr><th>#</th><th>Number</th><th>Range</th><th>OTP / Message</th><th>Count</th><th>Revenue</th></tr></thead>
+          <tbody id="otpBody"></tbody>
+        </table></div></div>
       </div>
 
-      <!-- ─── Live SMS Page ─── -->
-      <div class="page" id="page-live">
-        <div class="stats-grid" id="liveStats"></div>
-        <div class="section">
-          <div class="section-header">
-            <span class="section-title"><span class="live-dot"></span> &nbsp;Live SMS Feed</span>
-            <div style="display:flex;gap:10px;align-items:center">
-              <input class="search-box" id="liveSearch" placeholder="Search messages…" oninput="filterTable('liveBody',this.value)"/>
-              <span class="badge" id="liveTotalCount">–</span>
-            </div>
-          </div>
-          <div class="section-body">
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>#</th><th>From</th><th>Message</th><th>Time</th><th>Revenue</th></tr></thead>
-                <tbody id="liveBody"></tbody>
-              </table>
-            </div>
+      <!-- Per-range breakdown -->
+      <div class="sec" id="rangeBreakSec">
+        <div class="sh"><span class="st">📊 Received Stats by Range</span></div>
+        <div class="sb"><div class="tw"><table>
+          <thead><tr><th>Range</th><th>Count</th><th>Paid</th><th>Unpaid</th><th>Revenue</th></tr></thead>
+          <tbody id="rangeBody"></tbody>
+        </table></div></div>
+      </div>
+    </div>
+
+    <!-- Live SMS Page -->
+    <div class="page" id="page-live">
+      <div class="sg" id="liveStats"></div>
+      <div class="sec">
+        <div class="sh"><span class="st">⚡ Live Numbers Active Today</span><span class="badge" id="liveSmsToday">–</span></div>
+        <div class="sb"><div id="liveNumsGrid" style="padding:14px 16px;display:flex;flex-wrap:wrap;gap:8px"></div></div>
+      </div>
+      <div class="sec">
+        <div class="sh"><span class="st">📋 SID Active Table</span><span class="badge" id="sidCount">–</span></div>
+        <div class="sb"><div class="tw"><table>
+          <thead><tr><th>#</th><th>SID</th><th>Paid</th><th>Limit</th><th>Message</th></tr></thead>
+          <tbody id="sidBody"></tbody>
+        </table></div></div>
+      </div>
+    </div>
+
+    <!-- Numbers Page -->
+    <div class="page" id="page-numbers">
+      <div class="sec">
+        <div class="sh">
+          <span class="st">📱 My Virtual Numbers (1000)</span>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input class="sbox" id="numSearch" placeholder="Filter numbers…" oninput="filterNums(this.value)"/>
+            <span class="badge" id="numCnt">–</span>
           </div>
         </div>
+        <div class="sb"><div id="numGrid" class="nl-grid"></div></div>
       </div>
+    </div>
 
-      <!-- ─── Received SMS Page ─── -->
-      <div class="page" id="page-received">
-        <div class="stats-grid" id="receivedStats"></div>
-        <div class="section">
-          <div class="section-header">
-            <span class="section-title">📥 All Received SMS</span>
-            <div style="display:flex;gap:10px;align-items:center">
-              <input class="search-box" id="recvSearch" placeholder="Search…" oninput="filterTable('recvBody',this.value)"/>
-              <span class="badge" id="recvTotalCount">–</span>
-            </div>
-          </div>
-          <div class="section-body">
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>#</th><th>From</th><th>Message</th><th>Time</th><th>Revenue</th></tr></thead>
-                <tbody id="recvBody"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ─── Numbers Page ─── -->
-      <div class="page" id="page-numbers">
-        <div class="section">
-          <div class="section-header">
-            <span class="section-title">📱 My Virtual Numbers</span>
-            <span class="badge" id="numbersCount">–</span>
-          </div>
-          <div class="section-body">
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>#</th><th>Number</th><th>Details</th></tr></thead>
-                <tbody id="numbersBody"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div><!-- /content -->
-  </div><!-- /main -->
-</div><!-- /app -->
+  </div><!-- /content -->
+</div><!-- /main -->
 
 <script>
-// ─── State ───────────────────────────────────────────────────────────────────
-let cache       = {};
-let refreshTimer = null;
-let isLoading   = false;
-let currentPage = 'dashboard';
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
+let cache = {};
+let rTimer = null;
+let isLoading = false;
 
-function extractOTP(text) {
-  if (!text) return null;
-  const m = text.match(/\b(\d{4,8})\b/);
+// ── Routing ──────────────────────────────────────────────────────────────────
+const titles = {dashboard:'Dashboard',otps:'OTPs / Received',live:'Live SMS',numbers:'My Numbers'};
+function go(name, el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+  $(`page-${name}`).classList.add('active');
+  el.classList.add('active');
+  $('tbtitle').textContent = titles[name]||name;
+}
+
+// ── OTP extract ───────────────────────────────────────────────────────────────
+function extractOTP(t){
+  if(!t) return null;
+  const m = t.match(/\b(\d{4,8})\b/);
   return m ? m[1] : null;
 }
-
-function renderMsg(text) {
-  if (!text) return '<span style="color:var(--muted)">–</span>';
-  const otp = extractOTP(text);
-  if (otp) {
-    const safe = text.replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const highlighted = safe.replace(otp, `<span class="otp-chip">${otp}</span>`);
-    return `<span class="msg-text">${highlighted}</span>`;
+function renderMsg(t){
+  if(!t) return '<span style="color:var(--muted)">—</span>';
+  const otp = extractOTP(t);
+  const safe = t.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  if(otp){
+    const hi = safe.replace(new RegExp(`\\b${otp}\\b`), `<span class="otp-chip">${otp}</span>`);
+    return `<span class="msg-text">${hi}</span>`;
   }
-  return `<span class="msg-text">${text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>`;
+  return `<span class="msg-text">${safe}</span>`;
+}
+function rev(r){
+  if(!r||r==='0'||r==='') return '<span style="color:var(--muted)">—</span>';
+  return `<span class="rev-badge">💰 ${r}</span>`;
 }
 
-function renderRevenue(r) {
-  if (!r || r === '0' || r === '') return '<span style="color:var(--muted)">–</span>';
-  return `<span class="revenue-badge">💰 ${r}</span>`;
+// ── Alerts ────────────────────────────────────────────────────────────────────
+function alert2(type, msg){
+  const el = $('galert');
+  el.innerHTML=`<div class="alert a${type[0]}"><span>${type==='error'?'❌':'✅'}</span>${msg}</div>`;
+  el.style.display='block';
+  setTimeout(()=>el.style.display='none',5000);
 }
 
-function showAlert(type, msg) {
-  const el = $('globalAlert');
-  el.innerHTML = `<div class="alert alert-${type}"><span>${type==='error'?'❌':type==='success'?'✅':'⚠️'}</span>${msg}</div>`;
-  el.style.display = 'block';
-  setTimeout(() => el.style.display = 'none', 5000);
+// ── Loading ───────────────────────────────────────────────────────────────────
+function setLoad(on){
+  isLoading=on;
+  $('refBtn').disabled=on;
+  $('refIco').className=on?'spin':'';
+  $('refIco').textContent='🔄';
 }
 
-function setLoading(on) {
-  isLoading = on;
-  const btn  = $('refreshBtn');
-  const icon = $('refreshIcon');
-  btn.disabled = on;
-  icon.className = on ? 'spin' : '';
-  icon.textContent = '🔄';
+// ── Status bar ────────────────────────────────────────────────────────────────
+function setStatus(ok){
+  $('sdot').className='sdot'+(ok?'':' off');
+  $('sstatus').textContent=ok?'Connected':'Auth failed';
+  $('lpill').style.display=ok?'inline-flex':'none';
 }
 
-function updateSidebarStatus(ok) {
-  const dot  = $('statusDot');
-  const txt  = $('sidebarStatus');
-  const pill = $('livePill');
-  if (ok) {
-    dot.className = 'status-dot';
-    txt.textContent = 'Connected';
-    pill.style.display = 'inline-flex';
-  } else {
-    dot.className = 'status-dot offline';
-    txt.textContent = 'Auth Failed';
-    pill.style.display = 'none';
-  }
+// ── Filter table ──────────────────────────────────────────────────────────────
+function ft(tbodyId, q){
+  document.querySelectorAll(`#${tbodyId} tr`).forEach(r=>{
+    r.style.display=r.textContent.toLowerCase().includes(q.toLowerCase())?'':'none';
+  });
 }
-
-function filterTable(tbodyId, q) {
-  const rows = document.querySelectorAll(`#${tbodyId} tr`);
-  const lq   = q.toLowerCase();
-  rows.forEach(r => {
-    r.style.display = r.textContent.toLowerCase().includes(lq) ? '' : 'none';
+function filterNums(q){
+  document.querySelectorAll('#numGrid .nc').forEach(c=>{
+    c.style.display=c.textContent.toLowerCase().includes(q.toLowerCase())?'':'none';
   });
 }
 
-// ─── Page switching ───────────────────────────────────────────────────────────
-function showPage(name, el) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  $(`page-${name}`).classList.add('active');
-  el.classList.add('active');
-  currentPage = name;
-  const titles = {dashboard:'Dashboard',live:'Live SMS',received:'Received SMS',numbers:'My Numbers'};
-  $('topbarTitle').textContent = titles[name] || name;
+// ── Stat card ─────────────────────────────────────────────────────────────────
+function sc(icon,val,label){
+  return `<div class="sc"><div class="sc-icon">${icon}</div><div class="sc-v">${val||'0'}</div><div class="sc-l">${label}</div></div>`;
 }
 
-// ─── Render helpers ───────────────────────────────────────────────────────────
-function renderSmsRows(messages, limit) {
-  if (!messages || !messages.length) {
-    return `<tr><td colspan="5"><div class="empty-state">
-      <div class="icon">📭</div>
-      <h3>No messages</h3>
-      <p>Nothing here yet.</p>
-    </div></td></tr>`;
+// ── Render dashboard ──────────────────────────────────────────────────────────
+function renderDash(data){
+  const r = data.received||{};
+  const live = data.live||{};
+  const nums = data.numbers||[];
+  $('dStats').innerHTML =
+    sc('🔑', r.count_sms||r.count||'0','Total OTPs Today') +
+    sc('💰', r.revenue||'0','Revenue USD') +
+    sc('⚡', live.stats?.total||'0','Live Today') +
+    sc('📱', nums.length,'My Numbers');
+
+  // OTP table (show top 20 from sms_details → limited display)
+  const details = r.sms_details||[];
+  $('dOtpCnt').textContent = details.length + ' ranges';
+  if(!details.length){
+    $('dOtpBody').innerHTML=`<tr><td colspan="5"><div class="empty"><div class="ei">📭</div><h3>No OTPs today</h3><p>Try the OTPs page with a date range</p></div></td></tr>`;
+  } else {
+    $('dOtpBody').innerHTML = details.map((d,i)=>`
+      <tr>
+        <td style="color:var(--muted)">${i+1}</td>
+        <td><span class="num-chip">📱 ${d.range}</span></td>
+        <td><span class="range-badge">Range</span></td>
+        <td>Count: <b>${d.count}</b> · Paid: <b style="color:var(--green)">${d.paid}</b></td>
+        <td>${rev(d.revenue)}</td>
+      </tr>`).join('');
   }
-  const list = limit ? messages.slice(0, limit) : messages;
-  return list.map((m, i) => `
-    <tr>
-      <td style="color:var(--muted);width:44px">${i+1}</td>
-      <td><span class="number-chip">${m.sender || '–'}</span></td>
-      <td>${renderMsg(m.message)}</td>
-      <td style="color:var(--muted);white-space:nowrap;font-size:.78rem">${m.time || '–'}</td>
-      <td>${renderRevenue(m.revenue)}</td>
-    </tr>`).join('');
+
+  // Live numbers
+  const lnums = live.numbers||[];
+  $('dLiveCnt').textContent = lnums.length;
+  $('dLiveNums').innerHTML = lnums.length
+    ? lnums.map(n=>`<span class="num-chip">📱 ${n}</span>`).join('')
+    : '<span style="color:var(--muted);font-size:.8rem">No live numbers right now</span>';
 }
 
-function renderStatsCards(stats, fields) {
-  return fields.map(f => `
-    <div class="stat-card">
-      <div class="stat-icon">${f.icon}</div>
-      <div class="stat-value">${stats[f.key] || '0'}</div>
-      <div class="stat-label">${f.label}</div>
+// ── Render Live page ──────────────────────────────────────────────────────────
+function renderLive(live){
+  if(!live) return;
+  const s = live.stats||{};
+  $('liveStats').innerHTML =
+    sc('📨', s.total,'Total Live') +
+    sc('✅', s.paid,'Paid') +
+    sc('⏳', s.unpaid,'Unpaid') +
+    sc('💰', s.revenue,'Revenue USD');
+
+  $('liveSmsToday').textContent = live.sms_today||s.total||'0';
+
+  const nums = live.numbers||[];
+  $('liveNumsGrid').innerHTML = nums.length
+    ? nums.map(n=>`<span class="num-chip" style="font-size:.85rem">📱 ${n}</span>`).join('')
+    : '<span style="color:var(--muted);font-size:.8rem">No numbers detected</span>';
+
+  const rows = live.sid_rows||[];
+  $('sidCount').textContent = rows.length;
+  $('sidBody').innerHTML = rows.length
+    ? rows.map((r,i)=>`
+        <tr>
+          <td style="color:var(--muted)">${i+1}</td>
+          <td><span class="num-chip">${r.sid}</span></td>
+          <td>${r.paid||'—'}</td>
+          <td>${r.limit||'—'}</td>
+          <td>${renderMsg(r.message)}</td>
+        </tr>`).join('')
+    : `<tr><td colspan="5"><div class="empty"><div class="ei">📡</div><h3>No SID rows</h3><p>Live SMS page may use JS rendering</p></div></td></tr>`;
+}
+
+// ── Render Numbers page ───────────────────────────────────────────────────────
+function renderNumbers(numbers){
+  if(!numbers) return;
+  $('numCnt').textContent = numbers.length;
+  if(!numbers.length){
+    $('numGrid').innerHTML=`<div style="padding:40px;color:var(--muted);text-align:center">No numbers found</div>`;
+    return;
+  }
+  $('numGrid').innerHTML = numbers.map(n=>`
+    <div class="nc">
+      <div class="nc-num">📱 ${n.number}</div>
+      <div class="nc-info">${n.range_name||''} ${n.rate?'· Rate: '+n.rate:''}</div>
     </div>`).join('');
 }
 
-// ─── Main fetch ───────────────────────────────────────────────────────────────
-async function fetchAll() {
-  if (isLoading) return;
-  setLoading(true);
-  try {
+// ── Load OTPs (full 3-step) ───────────────────────────────────────────────────
+async function loadOtps(){
+  const fd = $('fromDate').value;
+  const td = $('toDate').value;
+  $('otpBody').innerHTML=`<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--muted)">🔄 Fetching OTPs… this may take 10–30s</td></tr>`;
+  $('otpTotal').textContent='…';
+  try{
+    const params = new URLSearchParams();
+    if(fd) params.set('from', fd);
+    if(td) params.set('to',   td);
+    params.set('limit','100');
+    const res  = await fetch('/api/otps?' + params);
+    const data = await res.json();
+    if(data.error){ alert2('error', data.error); return; }
+
+    // Stats
+    const s = data.stats||{};
+    $('otpStats').innerHTML =
+      sc('📬', s.count_sms,'Total SMS') +
+      sc('✅', s.paid_sms,'Paid') +
+      sc('⏳', s.unpaid_sms,'Unpaid') +
+      sc('💰', s.revenue,'Revenue USD');
+
+    // Range breakdown
+    const details = s.sms_details||[];
+    $('rangeBody').innerHTML = details.length
+      ? details.map(d=>`
+          <tr>
+            <td><span class="range-badge">${d.range}</span></td>
+            <td><b>${d.count}</b></td>
+            <td style="color:var(--green)">${d.paid}</td>
+            <td style="color:var(--red)">${d.unpaid}</td>
+            <td>${rev(d.revenue)}</td>
+          </tr>`).join('')
+      : `<tr><td colspan="5" style="color:var(--muted);padding:20px">No range data</td></tr>`;
+
+    // OTP messages
+    const otps = data.otps||[];
+    $('otpTotal').textContent = otps.length;
+    $('otpBody').innerHTML = otps.length
+      ? otps.map((o,i)=>`
+          <tr>
+            <td style="color:var(--muted)">${i+1}</td>
+            <td><span class="num-chip">📱 ${o.phone_number}</span></td>
+            <td><span class="range-badge">${o.range}</span></td>
+            <td>${renderMsg(o.otp_message)}</td>
+            <td><b>${o.count||'1'}</b></td>
+            <td>${rev(o.revenue)}</td>
+          </tr>`).join('')
+      : `<tr><td colspan="6"><div class="empty"><div class="ei">📭</div><h3>No OTP messages found</h3><p>Try a different date range</p></div></td></tr>`;
+
+  } catch(e){ alert2('error','Network error: '+e.message); }
+}
+
+// ── Main fetch ────────────────────────────────────────────────────────────────
+async function fetchAll(){
+  if(isLoading) return;
+  setLoad(true);
+  try{
     const res  = await fetch('/api/all');
     const data = await res.json();
-
-    if (data.error) {
-      showAlert('error', `API error: ${data.error}`);
-      updateSidebarStatus(false);
-      return;
-    }
-
+    if(data.error){ alert2('error', data.error); setStatus(false); return; }
     cache = data;
-    updateSidebarStatus(true);
-    renderDashboard(data);
-    renderLivePage(data.live);
-    renderReceivedPage(data.received);
-    renderNumbersPage(data.numbers);
-
-  } catch (e) {
-    showAlert('error', `Network error: ${e.message}`);
-    updateSidebarStatus(false);
-  } finally {
-    setLoading(false);
-  }
+    setStatus(true);
+    renderDash(data);
+    renderLive(data.live);
+    renderNumbers(data.numbers);
+  } catch(e){
+    alert2('error','Network: '+e.message);
+    setStatus(false);
+  } finally { setLoad(false); }
 }
 
-// ─── Render Dashboard ─────────────────────────────────────────────────────────
-function renderDashboard(data) {
-  const live = data.live || {};
-  const recv = data.received || {};
-  const nums = data.numbers || [];
-
-  const ls = live.stats || {};
-  const rs = recv.stats || {};
-
-  $('statCards').innerHTML = `
-    <div class="stat-card">
-      <div class="stat-icon">⚡</div>
-      <div class="stat-value">${ls.total || '0'}</div>
-      <div class="stat-label">Live Messages</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon">📥</div>
-      <div class="stat-value">${rs.count || '0'}</div>
-      <div class="stat-label">Total Received</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon">💰</div>
-      <div class="stat-value">${ls.revenue || rs.revenue || '0'}</div>
-      <div class="stat-label">Revenue (USD)</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon">📱</div>
-      <div class="stat-value">${nums.length}</div>
-      <div class="stat-label">Active Numbers</div>
-    </div>`;
-
-  // Live table (top 10)
-  const lm = live.messages || [];
-  $('liveCount').textContent = lm.length;
-  $('dashLiveBody').innerHTML = renderSmsRows(lm, 10);
-
-  // Received table (top 10)
-  const rm = recv.messages || [];
-  $('receivedCount').textContent = rm.length;
-  $('dashRecvBody').innerHTML = renderSmsRows(rm, 10);
+async function forceLogin(){
+  const btn = $('loginBtn');
+  btn.disabled=true; btn.textContent='⏳ …';
+  try{
+    const r = await fetch('/api/refresh',{method:'POST'});
+    const d = await r.json();
+    if(d.success){ alert2('success','Re-authenticated!'); fetchAll(); }
+    else alert2('error','Re-auth failed – check credentials/cookies');
+  } catch(e){ alert2('error',e.message); }
+  btn.disabled=false; btn.textContent='🔑 Re-Auth';
 }
 
-// ─── Render Live Page ─────────────────────────────────────────────────────────
-function renderLivePage(live) {
-  if (!live) return;
-  const s = live.stats || {};
-  $('liveStats').innerHTML = renderStatsCards(s, [
-    {key:'total',   icon:'📨', label:'Total Live'},
-    {key:'paid',    icon:'✅', label:'Paid'},
-    {key:'unpaid',  icon:'⏳', label:'Unpaid'},
-    {key:'revenue', icon:'💰', label:'Revenue USD'},
-  ]);
-  const msgs = live.messages || [];
-  $('liveTotalCount').textContent = msgs.length;
-  $('liveBody').innerHTML = renderSmsRows(msgs);
-}
+// ── Date defaults ──────────────────────────────────────────────────────────────
+(function(){
+  const today = new Date().toISOString().slice(0,10);
+  $('fromDate').value = today;
+  $('toDate').value   = today;
+})();
 
-// ─── Render Received Page ─────────────────────────────────────────────────────
-function renderReceivedPage(recv) {
-  if (!recv) return;
-  const s = recv.stats || {};
-  $('receivedStats').innerHTML = renderStatsCards(s, [
-    {key:'count',   icon:'📬', label:'Total Received'},
-    {key:'paid',    icon:'✅', label:'Paid'},
-    {key:'unpaid',  icon:'⏳', label:'Unpaid'},
-    {key:'revenue', icon:'💰', label:'Revenue USD'},
-  ]);
-  const msgs = recv.messages || [];
-  $('recvTotalCount').textContent = msgs.length;
-  $('recvBody').innerHTML = renderSmsRows(msgs);
+// ── Auto-refresh ──────────────────────────────────────────────────────────────
+function startAR(){
+  if(rTimer) clearInterval(rTimer);
+  rTimer = setInterval(()=>{ if($('autoR').checked) fetchAll(); }, 15000);
 }
-
-// ─── Render Numbers Page ──────────────────────────────────────────────────────
-function renderNumbersPage(numbers) {
-  if (!numbers) return;
-  $('numbersCount').textContent = numbers.length;
-  if (!numbers.length) {
-    $('numbersBody').innerHTML = `<tr><td colspan="3"><div class="empty-state">
-      <div class="icon">📵</div><h3>No numbers found</h3>
-      <p>Could not parse any numbers from IVAS.</p>
-    </div></td></tr>`;
-    return;
-  }
-  $('numbersBody').innerHTML = numbers.map((n, i) => `
-    <tr>
-      <td style="color:var(--muted)">${i+1}</td>
-      <td><span class="number-chip">📱 ${n.number}</span></td>
-      <td style="color:var(--muted);font-size:.8rem">${(n.details||[]).join(' &nbsp;|&nbsp; ') || '–'}</td>
-    </tr>`).join('');
-}
-
-// ─── Auto-refresh ─────────────────────────────────────────────────────────────
-function startAutoRefresh() {
-  if (refreshTimer) clearInterval(refreshTimer);
-  refreshTimer = setInterval(() => {
-    if ($('autoRefresh').checked) fetchAll();
-  }, 12000);
-}
-
-$('refreshBtn').addEventListener('click', fetchAll);
-$('autoRefresh').addEventListener('change', e => {
-  if (e.target.checked) startAutoRefresh();
-  else clearInterval(refreshTimer);
+$('refBtn').addEventListener('click', fetchAll);
+$('autoR').addEventListener('change', e=>{
+  if(e.target.checked) startAR(); else clearInterval(rTimer);
 });
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
 fetchAll();
-startAutoRefresh();
+startAR();
 </script>
 </body>
 </html>
