@@ -1,224 +1,200 @@
-# Copyright @Arslan-MD + Dashboard by Abdul Rehman Rajpoot
-# Updates Channel t.me/arslanmd
+import os
+import re
+import logging
+import cloudscraper
+from bs4 import BeautifulSoup
 from flask import Flask, request, jsonify, render_template
 from datetime import datetime
-import cloudscraper
+import time
 import json
-from bs4 import BeautifulSoup
-import logging
-import os
-import gzip
-import brotli
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class IVASSMSClient:
-    def __init__(self):
-        self.scraper = cloudscraper.create_scraper()
+class IVASAutoClient:
+    def __init__(self, email, password):
+        self.email = email
+        self.password = password
         self.base_url = "https://www.ivasms.com"
+        self.scraper = cloudscraper.create_scraper()
         self.logged_in = False
         self.csrf_token = None
-        
+
+        # Standard headers
         self.scraper.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
             'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-            'Sec-Fetch-Dest': 'document',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'none',
-            'Sec-Fetch-User': '?1',
-            'Cache-Control': 'max-age=0',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Origin': self.base_url,
         })
 
-    def decompress_response(self, response):
-        encoding = response.headers.get('Content-Encoding', '').lower()
-        content = response.content
+    def login(self):
+        """Perform login using email and password, retrieve session cookies and CSRF token."""
+        logger.info("Attempting login with provided credentials...")
         try:
-            if encoding == 'gzip':
-                content = gzip.decompress(content)
-            elif encoding == 'br':
-                content = brotli.decompress(content)
-            return content.decode('utf-8', errors='replace')
-        except Exception as e:
-            logger.error(f"Error decompressing response: {e}")
-            return response.text
+            # First get the login page to capture any hidden tokens
+            resp = self.scraper.get(f"{self.base_url}/login")
+            if resp.status_code != 200:
+                logger.error(f"Failed to reach login page: {resp.status_code}")
+                return False
 
-    def load_cookies(self, file_path="cookies.json"):
-        try:
-            if os.getenv("COOKIES_JSON"):
-                cookies_raw = json.loads(os.getenv("COOKIES_JSON"))
-            else:
-                with open(file_path, 'r') as file:
-                    cookies_raw = json.load(file)
-            if isinstance(cookies_raw, dict):
-                return cookies_raw
-            elif isinstance(cookies_raw, list):
-                cookies = {}
-                for cookie in cookies_raw:
-                    if 'name' in cookie and 'value' in cookie:
-                        cookies[cookie['name']] = cookie['value']
-                return cookies
-            else:
-                raise ValueError("Unsupported cookies format.")
-        except Exception as e:
-            logger.error(f"Error loading cookies: {e}")
-            return None
+            soup = BeautifulSoup(resp.text, 'html.parser')
+            csrf_token = soup.find('input', {'name': '_token'})
+            csrf_token = csrf_token['value'] if csrf_token else ''
 
-    def login_with_cookies(self, cookies_file="cookies.json"):
-        logger.debug("Logging in with cookies")
-        cookies = self.load_cookies(cookies_file)
-        if not cookies:
-            return False
-        for name, value in cookies.items():
-            self.scraper.cookies.set(name, value, domain="www.ivasms.com")
-        try:
-            response = self.scraper.get(f"{self.base_url}/portal/sms/received", timeout=10)
-            if response.status_code == 200:
-                html_content = self.decompress_response(response)
-                soup = BeautifulSoup(html_content, 'html.parser')
-                csrf_input = soup.find('input', {'name': '_token'})
-                if csrf_input:
-                    self.csrf_token = csrf_input.get('value')
+            # Prepare login payload
+            payload = {
+                '_token': csrf_token,
+                'email': self.email,
+                'password': self.password,
+                'remember': '1'
+            }
+
+            # Post login
+            login_resp = self.scraper.post(f"{self.base_url}/login", data=payload, allow_redirects=False)
+            if login_resp.status_code in [302, 200]:
+                # Follow redirect to dashboard
+                dashboard_resp = self.scraper.get(f"{self.base_url}/dashboard")
+                if dashboard_resp.status_code == 200:
+                    # Extract CSRF token from dashboard for later use
+                    soup = BeautifulSoup(dashboard_resp.text, 'html.parser')
+                    token_input = soup.find('input', {'name': '_token'})
+                    if token_input:
+                        self.csrf_token = token_input['value']
                     self.logged_in = True
+                    logger.info("Login successful.")
                     return True
+            logger.error("Login failed – wrong credentials or login endpoint changed.")
             return False
         except Exception as e:
             logger.error(f"Login error: {e}")
             return False
 
-    def check_otps(self, from_date="", to_date=""):
-        """Fetch SMS statistics and list of OTP messages (direct table)"""
-        if not self.logged_in or not self.csrf_token:
+    def ensure_login(self):
+        """Check if session is still alive; if not, re‑login."""
+        if not self.logged_in:
+            return self.login()
+        # Quick check by hitting a protected endpoint
+        test = self.scraper.get(f"{self.base_url}/dashboard")
+        if test.status_code == 200:
+            return True
+        logger.warning("Session expired, re‑logging in.")
+        self.logged_in = False
+        return self.login()
+
+    def fetch_numbers(self):
+        """Scrape the numbers page and return list of numbers with details."""
+        if not self.ensure_login():
             return None
-        try:
-            payload = {'from': from_date, 'to': to_date, '_token': self.csrf_token}
-            headers = {
-                'Accept': 'text/html, */*; q=0.01',
-                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                'X-Requested-With': 'XMLHttpRequest',
-                'Origin': self.base_url,
-                'Referer': f"{self.base_url}/portal/sms/received"
-            }
-            response = self.scraper.post(f"{self.base_url}/portal/sms/received/getsms", data=payload, headers=headers, timeout=10)
-            if response.status_code == 200:
-                html_content = self.decompress_response(response)
-                soup = BeautifulSoup(html_content, 'html.parser')
-
-                # ---- Statistics ----
-                count_sms = soup.select_one("#CountSMS").text if soup.select_one("#CountSMS") else '0'
-                paid_sms = soup.select_one("#PaidSMS").text if soup.select_one("#PaidSMS") else '0'
-                unpaid_sms = soup.select_one("#UnpaidSMS").text if soup.select_one("#UnpaidSMS") else '0'
-                revenue_sms = soup.select_one("#RevenueSMS").text.replace(' USD', '') if soup.select_one("#RevenueSMS") else '0'
-
-                # ---- OTP Messages (new table structure) ----
-                # Look for a table that contains OTP messages.
-                # Typical new IVAS panel: a table with headers Sender, Message, Time, Revenue.
-                otp_messages = []
-                # Find all rows in the table (skip header row)
-                rows = soup.select("table tbody tr")  # try table body rows first
-                if not rows:
-                    rows = soup.select("table tr")    # fallback: all table rows
-                for row in rows:
-                    cells = row.find_all("td")
-                    if len(cells) >= 4:  # Sender, Message, Time, Revenue
-                        sender = cells[0].get_text(strip=True)
-                        message = cells[1].get_text(strip=True)
-                        time = cells[2].get_text(strip=True)
-                        revenue = cells[3].get_text(strip=True)
-                        # Only add if there's a message (OTP)
-                        if message:
-                            otp_messages.append({
-                                'range': sender,          # we can use sender as range
-                                'phone_number': '',       # not available in this view
-                                'otp_message': message,
-                                'time': time,
-                                'revenue': revenue
-                            })
-                logger.debug(f"Extracted {len(otp_messages)} OTP messages from table.")
-
-                # For compatibility with the old structure, we keep the sms_details empty
-                # but we will return the messages directly.
-                result = {
-                    'count_sms': count_sms,
-                    'paid_sms': paid_sms,
-                    'unpaid_sms': unpaid_sms,
-                    'revenue': revenue_sms,
-                    'sms_details': [],          # no longer used
-                    'otp_messages': otp_messages  # directly available
-                }
-                return result
-            logger.error(f"Failed to fetch OTPs. Status: {response.status_code}")
-            return None
-        except Exception as e:
-            logger.error(f"Error checking OTPs: {e}")
+        resp = self.scraper.get(f"{self.base_url}/portal/numbers")
+        if resp.status_code != 200:
+            logger.error(f"Failed to fetch numbers: {resp.status_code}")
             return None
 
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        numbers = []
+        # The numbers are usually in a table with rows like <tr><td>+1234567890</td><td>...</td></tr>
+        rows = soup.select("table tbody tr")
+        if not rows:
+            rows = soup.select("table tr")
+        for row in rows:
+            cells = row.find_all("td")
+            if len(cells) >= 2:
+                number = cells[0].get_text(strip=True)
+                # Additional details may be in other cells
+                numbers.append({
+                    'number': number,
+                    'details': [c.get_text(strip=True) for c in cells[1:]]
+                })
+        logger.info(f"Found {len(numbers)} numbers.")
+        return numbers
+
+    def fetch_live_sms(self):
+        """Scrape the live SMS page and return messages + stats."""
+        if not self.ensure_login():
+            return None
+        resp = self.scraper.get(f"{self.base_url}/portal/live/my_sms")
+        if resp.status_code != 200:
+            logger.error(f"Failed to fetch live SMS: {resp.status_code}")
+            return None
+
+        soup = BeautifulSoup(resp.text, 'html.parser')
+
+        # Extract statistics (may appear in a stats bar)
+        stats = {}
+        # Try to find the totals – adjust selectors based on actual page
+        total_span = soup.find(id="CountSMS") or soup.find(string=re.compile(r"Total SMS"))
+        paid_span = soup.find(id="PaidSMS")
+        unpaid_span = soup.find(id="UnpaidSMS")
+        revenue_span = soup.find(id="RevenueSMS")
+
+        stats['total'] = total_span.get_text(strip=True) if total_span else '0'
+        stats['paid'] = paid_span.get_text(strip=True) if paid_span else '0'
+        stats['unpaid'] = unpaid_span.get_text(strip=True) if unpaid_span else '0'
+        stats['revenue'] = revenue_span.get_text(strip=True).replace(' USD', '') if revenue_span else '0'
+
+        # Parse message table
+        messages = []
+        rows = soup.select("table tbody tr")
+        if not rows:
+            rows = soup.select("table tr")
+        for row in rows:
+            cells = row.find_all("td")
+            if len(cells) >= 4:
+                sender = cells[0].get_text(strip=True)
+                message = cells[1].get_text(strip=True)
+                time_str = cells[2].get_text(strip=True)
+                revenue = cells[3].get_text(strip=True)
+                if message:  # only include rows with actual message
+                    messages.append({
+                        'sender': sender,
+                        'message': message,
+                        'time': time_str,
+                        'revenue': revenue
+                    })
+        logger.info(f"Fetched {len(messages)} live SMS messages.")
+        return {
+            'stats': stats,
+            'messages': messages
+        }
+
+# -------------------------------------------------------------------
+# Flask App
+# -------------------------------------------------------------------
 app = Flask(__name__)
-client = IVASSMSClient()
 
+# Read credentials from environment variables (set in Vercel dashboard)
+IVAS_EMAIL = os.environ.get('IVAS_EMAIL', 'usa19721986@gmail.com')
+IVAS_PASSWORD = os.environ.get('IVAS_PASSWORD', 'Amin@1972')
+
+client = IVASAutoClient(IVAS_EMAIL, IVAS_PASSWORD)
+
+# Attempt initial login at startup
 with app.app_context():
-    if not client.login_with_cookies():
-        logger.error("Failed to login with cookies")
+    if not client.login():
+        logger.error("Initial login failed – check credentials or IVAS availability.")
+    else:
+        logger.info("Initial login successful.")
 
 @app.route('/')
-def index():
+def dashboard():
     return render_template('index.html')
 
-@app.route('/api/sms')
-def api_sms():
-    date_str = request.args.get('date')
-    if not date_str:
-        date_str = datetime.now().strftime('%d/%m/%Y')
-    try:
-        datetime.strptime(date_str, '%d/%m/%Y')
-    except ValueError:
-        return jsonify({'error': 'Invalid date format. Use DD/MM/YYYY'}), 400
+@app.route('/api/numbers')
+def api_numbers():
+    numbers = client.fetch_numbers()
+    if numbers is None:
+        return jsonify({'error': 'Could not fetch numbers'}), 500
+    return jsonify({'numbers': numbers})
 
-    to_date = request.args.get('to_date', '')
-    if to_date:
-        try:
-            datetime.strptime(to_date, '%d/%m/%Y')
-        except ValueError:
-            return jsonify({'error': 'Invalid to_date format'}), 400
-
-    limit = request.args.get('limit')
-    if limit:
-        try:
-            limit = int(limit)
-            if limit <= 0:
-                return jsonify({'error': 'Limit must be positive'}), 400
-        except ValueError:
-            return jsonify({'error': 'Limit must be integer'}), 400
-
-    if not client.logged_in:
-        return jsonify({'error': 'Not authenticated'}), 401
-
-    result = client.check_otps(from_date=date_str, to_date=to_date)
-    if not result:
-        return jsonify({'error': 'Failed to fetch OTP data'}), 500
-
-    # Apply limit to OTP messages
-    otp_messages = result.get('otp_messages', [])
-    if limit is not None:
-        otp_messages = otp_messages[:limit]
-
-    return jsonify({
-        'status': 'success',
-        'from_date': date_str,
-        'to_date': to_date or 'Not specified',
-        'limit': limit if limit is not None else 'Not specified',
-        'sms_stats': {
-            'count_sms': result['count_sms'],
-            'paid_sms': result['paid_sms'],
-            'unpaid_sms': result['unpaid_sms'],
-            'revenue': result['revenue']
-        },
-        'otp_messages': otp_messages
-    })
+@app.route('/api/live')
+def api_live():
+    live_data = client.fetch_live_sms()
+    if live_data is None:
+        return jsonify({'error': 'Could not fetch live SMS'}), 500
+    return jsonify(live_data)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
