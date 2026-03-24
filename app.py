@@ -1,5 +1,5 @@
 """
-IVAS SMS Dashboard v3 — Admin panel, announcements, OTP generation, Firebase
+IVAS SMS Dashboard v4 – Professional 3D Dashboard with Admin Panel
 """
 import os, re, json, time, gzip, logging, hashlib
 from datetime import datetime
@@ -25,10 +25,8 @@ COOKIES_ENV   = os.environ.get('COOKIES_JSON',  '')
 
 # ---------------------- Firebase Helpers ----------------------
 def init_firebase_data():
-    """Ensure admin credentials and announcements exist."""
     admin_ref = db.child("admin")
     if not admin_ref.get().val():
-        # Default admin: redx / redx
         admin_ref.set({
             "username": "redx",
             "password": generate_password_hash("redx")
@@ -36,17 +34,15 @@ def init_firebase_data():
     ann_ref = db.child("announcements")
     if not ann_ref.get().val():
         ann_ref.set({
-            "active": "Welcome to IVAS OTP Dashboard!",
+            "active": "Welcome to the IVAS OTP Dashboard!",
             "history": []
         })
 
 def get_announcement():
-    """Return current active announcement message."""
     ann = db.child("announcements").get().val()
     return ann.get("active", "") if ann else ""
 
 def update_announcement(new_msg):
-    """Set new active announcement (admin only)."""
     ann_ref = db.child("announcements")
     current = ann_ref.get().val() or {}
     history = current.get("history", [])
@@ -54,15 +50,13 @@ def update_announcement(new_msg):
         history.append({"text": current["active"], "timestamp": datetime.utcnow().isoformat()})
     ann_ref.update({
         "active": new_msg,
-        "history": history[-50:]   # keep last 50
+        "history": history[-50:]
     })
 
 def change_admin_password(new_password):
-    """Update admin password hash."""
     db.child("admin").update({"password": generate_password_hash(new_password)})
 
 def verify_admin(username, password):
-    """Check admin credentials."""
     data = db.child("admin").get().val()
     if data and data.get("username") == username:
         return check_password_hash(data.get("password", ""), password)
@@ -348,71 +342,7 @@ if client.login():
 else:
     logger.error("⚠️  Login FAILED — check credentials and network")
 
-# ---------------------- Admin Authentication ----------------------
-@app.route('/admin/login', methods=['GET', 'POST'])
-def admin_login():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        if verify_admin(username, password):
-            session['admin_logged_in'] = True
-            return redirect(url_for('admin_dashboard'))
-        else:
-            return render_template('admin_login.html', error="Invalid credentials")
-    return render_template('admin_login.html')
-
-@app.route('/admin/logout')
-def admin_logout():
-    session.pop('admin_logged_in', None)
-    return redirect(url_for('index'))
-
-@app.route('/admin/dashboard')
-def admin_dashboard():
-    if not session.get('admin_logged_in'):
-        return redirect(url_for('admin_login'))
-    current_ann = get_announcement()
-    return render_template('admin_dashboard.html', announcement=current_ann)
-
-@app.route('/admin/change-password', methods=['POST'])
-def change_password():
-    if not session.get('admin_logged_in'):
-        return jsonify({'error': 'Unauthorized'}), 401
-    new_password = request.json.get('new_password')
-    if not new_password:
-        return jsonify({'error': 'Missing password'}), 400
-    change_admin_password(new_password)
-    return jsonify({'success': True})
-
-@app.route('/admin/update-announcement', methods=['POST'])
-def update_announcement_route():
-    if not session.get('admin_logged_in'):
-        return jsonify({'error': 'Unauthorized'}), 401
-    new_msg = request.json.get('message')
-    if new_msg is None:
-        return jsonify({'error': 'Missing message'}), 400
-    update_announcement(new_msg)
-    return jsonify({'success': True})
-
-@app.route('/api/announcements')
-def get_announcements():
-    return jsonify({'message': get_announcement()})
-
-# ---------------------- OTP Generation for a Number ----------------------
-@app.route('/api/generate-otp', methods=['POST'])
-def generate_otp():
-    data = request.json
-    number = data.get('number')
-    range_name = data.get('range')
-    from_date = data.get('from', '')
-    to_date = data.get('to', '')
-    if not number or not range_name:
-        return jsonify({'error': 'Missing number or range'}), 400
-    otp = client.fetch_otp_for_number(number, range_name, from_date, to_date)
-    if otp is None:
-        return jsonify({'error': 'Could not fetch OTP'}), 500
-    return jsonify({'otp': otp})
-
-# ---------------------- Existing routes (unchanged) ----------------------
+# ---------------------- Routes ----------------------
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -471,6 +401,47 @@ def api_refresh():
     client.csrf_token = None
     return jsonify({'success': client.login()})
 
+@app.route('/api/announcements')
+def api_announcements():
+    return jsonify({'message': get_announcement()})
+
+# Admin APIs (require admin session)
+@app.route('/admin/login', methods=['POST'])
+def admin_login_api():
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    if verify_admin(username, password):
+        session['admin_logged_in'] = True
+        return jsonify({'success': True})
+    return jsonify({'error': 'Invalid credentials'}), 401
+
+@app.route('/admin/logout', methods=['POST'])
+def admin_logout_api():
+    session.pop('admin_logged_in', None)
+    return jsonify({'success': True})
+
+@app.route('/admin/change-password', methods=['POST'])
+def change_password_api():
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+    new_password = request.json.get('new_password')
+    if not new_password:
+        return jsonify({'error': 'Missing password'}), 400
+    change_admin_password(new_password)
+    return jsonify({'success': True})
+
+@app.route('/admin/update-announcement', methods=['POST'])
+def update_announcement_api():
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+    new_msg = request.json.get('message')
+    if new_msg is None:
+        return jsonify({'error': 'Missing message'}), 400
+    update_announcement(new_msg)
+    return jsonify({'success': True})
+
+# Debug endpoints (unchanged)
 @app.route('/debug/raw/<path:p>')
 def debug_raw(p):
     if not client.ensure_login():
