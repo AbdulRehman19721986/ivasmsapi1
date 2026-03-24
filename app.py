@@ -59,6 +59,7 @@ class IVASAutoClient:
             csrf_token = soup.find('input', {'name': '_token'})
             if not csrf_token:
                 logger.error("No CSRF token found on login page.")
+                logger.info(f"Login page HTML snippet: {resp.text[:500]}")
                 return False
             csrf_token = csrf_token['value']
 
@@ -75,18 +76,34 @@ class IVASAutoClient:
             # 3. Follow redirect (if any)
             if login_resp.status_code in [302, 301]:
                 redirect_url = login_resp.headers.get('Location')
+                logger.info(f"Redirect to: {redirect_url}")
                 if redirect_url.startswith('/'):
                     redirect_url = self.base_url + redirect_url
                 follow_resp = self._request_with_retry('GET', redirect_url)
+                logger.info(f"Follow redirect status: {follow_resp.status_code}")
                 if follow_resp.status_code != 200:
                     logger.error(f"Failed to follow redirect: {follow_resp.status_code}")
                     return False
                 # After redirect, we may be at /portal or /dashboard.
                 # Now explicitly fetch the profile page to confirm login.
                 profile_resp = self._request_with_retry('GET', f"{self.base_url}/portal/profile")
+                logger.info(f"Profile page status: {profile_resp.status_code}")
                 if profile_resp.status_code != 200:
                     logger.error("Could not access profile page after login.")
-                    return False
+                    # Fallback: check portal page
+                    portal_resp = self._request_with_retry('GET', f"{self.base_url}/portal")
+                    if portal_resp.status_code != 200:
+                        logger.error("Could not access portal page after login.")
+                        return False
+                    # Check if portal page indicates logged in
+                    if self._is_logged_in(portal_resp.text):
+                        self.logged_in = True
+                        self.csrf_token = self._extract_csrf_from_html(portal_resp.text)
+                        logger.info("Login successful (detected on portal page).")
+                        return True
+                    else:
+                        logger.error("Portal page does not show logged-in state.")
+                        return False
                 # Check if profile page contains account code or logout link
                 if self._is_logged_in(profile_resp.text):
                     self.logged_in = True
@@ -96,20 +113,26 @@ class IVASAutoClient:
                         portal_resp = self._request_with_retry('GET', f"{self.base_url}/portal")
                         if portal_resp.status_code == 200:
                             self.csrf_token = self._extract_csrf_from_html(portal_resp.text)
-                    logger.info("Login successful.")
+                    logger.info("Login successful (detected on profile page).")
                     return True
+                else:
+                    logger.warning("Profile page does not show logged-in state.")
+                    logger.info(f"Profile page HTML snippet: {profile_resp.text[:500]}")
+                    return False
             elif login_resp.status_code == 200:
                 # No redirect; check if we are already on a dashboard page
                 if self._is_logged_in(login_resp.text):
                     self.logged_in = True
                     self.csrf_token = self._extract_csrf_from_html(login_resp.text)
-                    logger.info("Login successful.")
+                    logger.info("Login successful (no redirect).")
                     return True
+                else:
+                    logger.warning("Login POST returned 200 but not logged in.")
+                    logger.info(f"Login response HTML snippet: {login_resp.text[:500]}")
+                    return False
             else:
                 logger.error(f"Login POST returned {login_resp.status_code}")
-
-            logger.error("Login failed – credentials may be incorrect or login page changed.")
-            return False
+                return False
 
         except Exception as e:
             logger.error(f"Login error: {e}")
@@ -124,6 +147,10 @@ class IVASAutoClient:
         # Look for account code text (e.g., "Account Code : 8925533735")
         account_code = soup.find(text=re.compile(r'Account Code\s*:\s*\d+'))
         if account_code:
+            return True
+        # Also check for the presence of a "Profile" link (common in IVAS)
+        profile_link = soup.find('a', href=re.compile(r'/portal/profile'))
+        if profile_link:
             return True
         return False
 
@@ -297,6 +324,10 @@ app = Flask(__name__)
 IVAS_EMAIL = os.environ.get('IVAS_EMAIL', 'usa19721986@gmail.com')
 IVAS_PASSWORD = os.environ.get('IVAS_PASSWORD', 'Amin@1972')
 
+# Log the credentials (for debugging only – remove in production)
+logger.info(f"Using email: {IVAS_EMAIL}")
+logger.info(f"Using password: {'*' * len(IVAS_PASSWORD)}")
+
 client = IVASAutoClient(IVAS_EMAIL, IVAS_PASSWORD)
 
 # Attempt initial login on startup
@@ -346,23 +377,7 @@ def api_all():
         'live': live
     })
 
-# Debug endpoint
-@app.route('/debug/<page>')
-def debug_page(page):
-    if not client.ensure_login():
-        return "Not logged in", 401
-    if page == 'portal':
-        resp = client._request_with_retry('GET', f"{client.base_url}/portal")
-    elif page == 'numbers':
-        resp = client._request_with_retry('GET', f"{client.base_url}/portal/numbers")
-    elif page == 'live':
-        resp = client._request_with_retry('GET', f"{client.base_url}/portal/live/my_sms")
-    elif page == 'received':
-        resp = client._request_with_retry('GET', f"{client.base_url}/portal/sms/received")
-    else:
-        resp = client._request_with_retry('GET', f"{client.base_url}/{page}")
-    return resp.text
-
+# Debug endpoint that performs a fresh login and returns the profile HTML
 @app.route('/test-login')
 def test_login():
     temp_client = IVASAutoClient(IVAS_EMAIL, IVAS_PASSWORD)
