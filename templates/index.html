@@ -3,71 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>IVAS OTP Dashboard | Professional 3D</title>
+    <title>IVAS OTP Dashboard</title>
     <style>
+        :root { --orange: #f97316; --dark-bg: #0a0c15; --card-bg: rgba(15, 20, 30, 0.7); --text-light: #eef2ff; --text-muted: #94a3b8; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Poppins', 'Segoe UI', sans-serif; background: #0a0c15; color: #eef2ff; overflow-x: hidden; min-height: 100vh; }
-        #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
-        .app-container { position: relative; z-index: 10; backdrop-filter: blur(8px); background: rgba(10, 12, 21, 0.65); min-height: 100vh; padding: 1.5rem; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: var(--dark-bg); color: var(--text-light); overflow-x: hidden; min-height: 100vh; }
+        #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
+        .app-container { position: relative; z-index: 10; backdrop-filter: blur(8px); background: rgba(10, 12, 21, 0.65); min-height: 100vh; padding: 1rem; max-width: 1200px; margin: auto; }
         .header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; }
-        .logo h1 { font-size: 1.6rem; background: linear-gradient(135deg, #f97316, #ff9a4a); -webkit-background-clip: text; background-clip: text; color: transparent; }
-        .logo p { font-size: 0.75rem; color: #94a3b8; }
-        .status-badge { display: flex; align-items: center; gap: 0.75rem; }
+        .logo h1 { font-size: 1.5rem; background: linear-gradient(135deg, var(--orange), #ff9a4a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .logo p { font-size: 0.75rem; color: var(--text-muted); }
+        .status-badge { display: flex; align-items: center; gap: 0.5rem; background: var(--card-bg); padding: 0.4rem 0.8rem; border-radius: 20px; }
         .dot { width: 10px; height: 10px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e; animation: pulse 2s infinite; }
-        .dot.off { background: #ef4444; box-shadow: none; animation: none; }
-        @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
-        .announcement-bar { background: rgba(249,115,22,0.12); border-left: 4px solid #f97316; padding: 0.7rem 1rem; border-radius: 12px; margin-bottom: 1.5rem; font-size: 0.85rem; backdrop-filter: blur(4px); }
+        .dot.off { background: #ef4444; box-shadow: 0 0 6px #ef4444; animation: pulse-off 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        @keyframes pulse-off { 0%, 100% { transform: scale(1); } 50% { transform: scale(0.8); } }
         .tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-        .tab-btn { background: rgba(30, 33, 48, 0.7); border: none; padding: 0.6rem 1.2rem; border-radius: 40px; color: #cbd5e1; font-weight: 500; cursor: pointer; transition: all 0.2s ease; backdrop-filter: blur(4px); }
-        .tab-btn.active { background: #f97316; color: white; box-shadow: 0 0 12px rgba(249,115,22,0.4); }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-        .stat-card { background: rgba(15, 20, 30, 0.7); backdrop-filter: blur(8px); border-radius: 20px; padding: 1rem; border: 1px solid rgba(255,255,255,0.08); transition: transform 0.2s; }
-        .stat-card:hover { transform: translateY(-3px); background: rgba(20, 27, 40, 0.8); }
-        .stat-value { font-size: 2rem; font-weight: 700; color: #f97316; margin-top: 0.25rem; }
-        .stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; }
-        .section-card { background: rgba(15, 20, 30, 0.7); backdrop-filter: blur(8px); border-radius: 20px; margin-bottom: 1.5rem; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); }
-        .section-header { padding: 1rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
-        .section-title { font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
-        .table-wrapper { overflow-x: auto; max-height: 450px; overflow-y: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-        th, td { padding: 0.8rem 1rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        th { background: rgba(0,0,0,0.3); font-weight: 600; color: #cbd5e1; }
-        tr:hover td { background: rgba(255,255,255,0.03); }
-        .num-chip { font-family: monospace; background: rgba(249,115,22,0.2); padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.75rem; }
-        .otp-chip { background: #f97316; color: white; padding: 0.2rem 0.6rem; border-radius: 20px; font-family: monospace; font-weight: bold; display: inline-block; max-width: 300px; overflow-x: auto; white-space: normal; word-break: break-word; }
-        .btn { background: rgba(249,115,22,0.9); border: none; padding: 0.4rem 1rem; border-radius: 30px; color: white; cursor: pointer; font-size: 0.7rem; transition: 0.2s; }
-        .btn-outline { background: transparent; border: 1px solid #f97316; color: #f97316; }
-        .btn-outline:hover { background: #f97316; color: white; }
-        .numbers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 0.8rem; padding: 1rem; }
-        .number-card { background: rgba(20, 27, 40, 0.6); border-radius: 16px; padding: 0.8rem; backdrop-filter: blur(4px); transition: all 0.2s; }
-        .number-card:hover { background: rgba(30, 40, 55, 0.8); transform: translateY(-2px); }
-        .number { font-family: monospace; font-size: 0.9rem; font-weight: 600; color: #f97316; }
-        .range-tag { font-size: 0.65rem; color: #94a3b8; margin-top: 0.2rem; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-content { background: #0f1420; border-radius: 24px; width: 90%; max-width: 550px; max-height: 80vh; overflow-y: auto; padding: 1.5rem; border: 1px solid #f97316; box-shadow: 0 20px 35px rgba(0,0,0,0.4); }
-        .modal input, .modal textarea, .modal select { width: 100%; background: #1a1f2e; border: 1px solid #2d3348; padding: 0.7rem; border-radius: 12px; color: white; margin: 0.5rem 0; }
-        .modal button { margin-top: 0.5rem; width: 100%; background: #f97316; border: none; padding: 0.7rem; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; }
-        .close-btn { background: transparent; border: none; float: right; font-size: 1.2rem; cursor: pointer; color: #94a3b8; }
-        .admin-number-list { margin-top: 1rem; max-height: 200px; overflow-y: auto; }
-        .admin-number-item { display: flex; justify-content: space-between; align-items: center; background: #1a1f2e; padding: 0.5rem; border-radius: 8px; margin-bottom: 0.5rem; }
-        .admin-number-item span { font-family: monospace; }
-        .delete-number { background: #ef4444; border: none; padding: 0.2rem 0.6rem; border-radius: 20px; cursor: pointer; font-size: 0.7rem; }
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #f97316; border-radius: 5px; }
-        @media (max-width: 700px) { .app-container { padding: 1rem; } .stats-grid { grid-template-columns: 1fr 1fr; } }
+        .tab-btn { background: rgba(30, 33, 48, 0.7); border: 1px solid transparent; padding: 0.5rem 1rem; border-radius: 20px; color: var(--text-muted); font-weight: 500; cursor: pointer; transition: all 0.2s ease; }
+        .tab-btn.active { background: var(--orange); color: white; border-color: var(--orange); }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .stat-card { background: var(--card-bg); backdrop-filter: blur(8px); border-radius: 16px; padding: 1rem; border: 1px solid rgba(255,255,255,0.08); text-align: center; }
+        .stat-value { font-size: 1.75rem; font-weight: 700; color: var(--orange); margin-top: 0.25rem; }
+        .stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); }
         .tab-pane { display: none; }
         .tab-pane.active { display: block; }
-        .badge { background: rgba(249,115,22,0.2); padding: 0.2rem 0.6rem; border-radius: 30px; font-size: 0.7rem; }
-        .message-preview { max-width: 300px; white-space: normal; word-break: break-word; }
-        /* IVAS OTPs tab styles (already included inline in the tab) */
+        /* OTPs Tab Styles */
+        .card { background: var(--card-bg); backdrop-filter: blur(8px); border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 1rem; }
+        .card-header { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .form-controls { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+        .form-group { flex: 1; min-width: 150px; }
+        .form-label { color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.25rem; display: block; }
+        .form-control { width: 100%; background: #1a1f2e; border: 1px solid #2d3348; color: white; padding: 0.5rem; border-radius: 8px; }
+        .btn { background: var(--orange); border: none; padding: 0.6rem 1rem; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; width: 100%; }
+        .sms-body { min-height: 150px; padding: 1rem; color: #333; /* Color is for the injected HTML */ }
+        .sms-empty { padding: 3rem 1rem; text-align: center; color: var(--text-muted); }
+        /* Styles for content injected from IVAS */
+        #ResultCDR { color: var(--text-light); }
+        #ResultCDR .card { background: rgba(255,255,255,0.05); color: var(--text-light); }
+        #ResultCDR .item, #ResultCDR .card-body { padding: 0.5rem 1rem; }
+        #ResultCDR p { margin: 0; color: var(--text-light) !important; }
+        #ResultCDR .col-sm-4 { font-weight: bold; color: var(--orange) !important; }
     </style>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
 
@@ -76,375 +56,68 @@
 <div class="app-container">
     <div class="header">
         <div class="logo">
-            <h1>IVAS OTP Dashboard</h1>
-            <p>Real-time SMS & OTP Management</p>
+            <h1>IVAS Dashboard</h1>
+            <p>Real-time SMS &amp; OTP Monitoring</p>
         </div>
         <div class="status-badge">
             <div class="dot" id="status-dot"></div>
             <span id="status-text">Connecting...</span>
-            <button class="btn btn-outline" id="refresh-btn">⟳ Refresh</button>
-            <button class="btn" id="admin-btn">👑 Admin</button>
         </div>
-    </div>
-
-    <div id="announcement-bar" class="announcement-bar" style="display: none;">
-        📢 <span id="announcement-text"></span>
     </div>
 
     <div class="tabs">
         <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
         <button class="tab-btn" data-tab="otps">🔑 OTPs / Received</button>
-        <button class="tab-btn" data-tab="live">⚡ Live SMS</button>
-        <button class="tab-btn" data-tab="numbers">📱 My Numbers</button>
     </div>
 
-    <!-- Dashboard Tab -->
     <div id="tab-dashboard" class="tab-pane active">
-        <div class="stats-grid" id="dash-stats"></div>
-        <div class="section-card">
-            <div class="section-header"><span class="section-title">🔑 Latest OTPs by Range</span><span class="badge" id="dash-range-count">0 ranges</span></div>
-            <div class="table-wrapper"><table><thead><tr><th>Range</th><th>Count</th><th>Paid</th><th>Unpaid</th><th>Revenue</th></tr></thead><tbody id="dash-range-body"></tbody></table></div>
-        </div>
-        <div class="section-card">
-            <div class="section-header"><span class="section-title">⚡ Live Numbers Today</span><span class="badge" id="dash-live-count">0</span></div>
-            <div id="dash-live-numbers" class="numbers-grid" style="padding: 0.8rem;"></div>
-        </div>
+        <div id="dashboard-error" style="display:none; color: #ef4444; text-align: center; padding: 1rem; background: rgba(239, 68, 68, 0.1); border-radius: 8px; margin-bottom: 1rem;"></div>
+        <h3>Today's Received SMS</h3>
+        <div class="stats-grid" id="dash-stats-received"></div>
+        <h3>Today's Live SMS</h3>
+        <div class="stats-grid" id="dash-stats-live"></div>
     </div>
 
-    <!-- OTPs Tab (IVAS-style) -->
     <div id="tab-otps" class="tab-pane">
-        <div class="main-container" style="margin: 0; padding: 0;">
-            <div class="page-header">
-                <div class="header-title">
-                    <i class="fas fa-chart-bar header-icon"></i>
-                    <h1 class="page-title">SMS Received</h1>
-                </div>
-                <div class="breadcrumb-nav">
-                    <a href="/">
-                        <i class="fas fa-home"></i>
-                        Dashboard
-                    </a>
-                    <span class="separator">/</span>
-                    <span>SMS Received</span>
-                </div>
-            </div>
-
-            <div class="stat-strip">
-                <div class="stat-item s-count">
-                    <div class="stat-num" id="CountSMS">0</div>
-                    <div class="stat-lbl">Total SMS</div>
-                </div>
-                <div class="stat-item s-paid">
-                    <div class="stat-num" id="PaidSMS">0</div>
-                    <div class="stat-lbl">Paid</div>
-                </div>
-                <div class="stat-item s-unpaid">
-                    <div class="stat-num" id="UnpaidSMS">0</div>
-                    <div class="stat-lbl">Unpaid</div>
-                </div>
-                <div class="stat-item s-rev">
-                    <div class="stat-num" id="RevenueSMS">$0.00</div>
-                    <div class="stat-lbl">Revenue</div>
-                </div>
-            </div>
-
-            <div class="card mb-3">
-                <div class="card-header">
-                    <div class="row align-items-end">
-                        <div class="col-md-5">
-                            <label class="form-label" for="start_date">Start Date</label>
-                            <input class="form-control datepicker" autocomplete="off" id="start_date" type="text" />
-                        </div>
-                        <div class="col-md-5">
-                            <label class="form-label" for="end_date">End Date</label>
-                            <input class="form-control datepicker" autocomplete="off" id="end_date" type="text" />
-                        </div>
-                        <div class="col-md-2">
-                            <button class="btn btn-warning w-100" onclick="GetSMS()"><i class="fas fa-bolt me-1"></i> Get SMS</button>
-                        </div>
+        <div class="card">
+            <div class="card-header">
+                <div class="form-controls">
+                    <div class="form-group">
+                        <label class="form-label" for="start_date">Start Date</label>
+                        <input class="form-control" autocomplete="off" id="start_date" type="text" />
                     </div>
-                </div>
-                <div class="card-body p-0">
-                    <div class="col-head">
-                        <div style="display:flex;">
-                            <span style="flex:0 0 33.33%;">Range</span>
-                            <span style="flex:0 0 16.66%;text-align:center;">Count</span>
-                            <span style="flex:0 0 16.66%;text-align:center;">Paid</span>
-                            <span style="flex:0 0 16.66%;text-align:center;">Unpaid</span>
-                            <span style="flex:0 0 16.66%;text-align:center;">Revenue</span>
-                        </div>
+                    <div class="form-group">
+                        <label class="form-label" for="end_date">End Date</label>
+                        <input class="form-control" autocomplete="off" id="end_date" type="text" />
                     </div>
-                    <div class="sms-body" id="ResultCDR">
-                        <div class="sms-empty">
-                            <div class="icon"><i class="fas fa-inbox"></i></div>
-                            <p>Select a date range and click <strong>Get SMS</strong> to load your records.</p>
-                        </div>
+                    <div class="form-group">
+                        <button class="btn" id="getsms-btn">Get SMS</button>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <style>
-            /* IVAS-specific styles */
-            .stat-strip { display: flex; gap: 1rem; margin-bottom: 1.5rem; }
-            .stat-item { flex: 1; background: #fff; border-radius: 8px; border: 1px solid #e2e8f0; padding: 1rem; text-align: center; position: relative; overflow: hidden; }
-            .stat-item::after { content: ''; position: absolute; bottom: 0; left: 20%; right: 20%; height: 3px; border-radius: 3px 3px 0 0; }
-            .stat-item.s-count::after { background: var(--o); }
-            .stat-item.s-paid::after { background: var(--g); }
-            .stat-item.s-unpaid::after { background: var(--r); }
-            .stat-item.s-rev::after { background: var(--slate); }
-            .stat-num { font-size: 1.6rem; font-weight: 800; line-height: 1; margin-bottom: 0.3rem; }
-            .s-count .stat-num { color: var(--o-dark); }
-            .s-paid .stat-num { color: var(--g); }
-            .s-unpaid .stat-num { color: var(--r); }
-            .s-rev .stat-num { color: var(--dark); }
-            .stat-lbl { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--slate); }
-            .col-head { background: linear-gradient(180deg, #f8fafc, #f1f5f9); padding: 0.7rem 1.5rem; border-bottom: 2px solid #e2e8f0; }
-            .col-head span { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; }
-            .sms-body { min-height: 80px; max-height: 75vh; overflow-y: auto; }
-            .sms-empty { padding: 4rem 2rem; text-align: center; }
-            .sms-empty .icon { width: 56px; height: 56px; border-radius: 50%; background: #f8fafc; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 1rem; }
-            .sms-empty .icon i { font-size: 1.3rem; color: #cbd5e1; }
-            .sms-empty p { color: #94a3b8; font-size: 0.875rem; margin: 0; }
-            .rng { padding: 0 1.5rem; cursor: pointer; transition: background 0.12s; border-bottom: 1px solid #f8fafc; }
-            .rng:hover { background: var(--o-light); }
-            .rng .inner { display: flex; align-items: center; padding: 0.8rem 0; }
-            .rng .c-name { flex: 0 0 33.33%; display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
-            .rng .c-val { flex: 0 0 16.66%; text-align: center; font-size: 0.875rem; font-weight: 700; }
-            .rng .c-val.v-count { color: var(--o-dark); }
-            .rng .c-val.v-paid { color: var(--g); }
-            .rng .c-val.v-unpaid { color: var(--r); }
-            .rng .c-val.v-rev { color: var(--dark); }
-            .rng .c-val.v-rev small { font-weight: 400; color: var(--slate); font-size: 0.7rem; }
-            .rng .chevron { width: 18px; height: 18px; border-radius: 4px; background: #f1f5f9; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
-            .rng .chevron i { font-size: 0.5rem; color: #94a3b8; transition: transform 0.2s; }
-            .rng .chevron.open { background: var(--o-light); }
-            .rng .chevron.open i { transform: rotate(90deg); color: var(--o); }
-            .rng .rname { font-weight: 600; font-size: 0.875rem; color: var(--dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-            .sub { background: #fafbfc; margin: 0 1rem 0.5rem 2.5rem; border-radius: 10px; border: 1px solid #f1f5f9; display: none; overflow: hidden; }
-            .nrow { display: flex; align-items: center; padding: 0.6rem 1rem; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.12s; }
-            .nrow:last-child { border-bottom: none; }
-            .nrow:hover { background: #f0f4f8; }
-            .nrow .c-name { flex: 0 0 33.33%; display: flex; align-items: center; gap: 0.4rem; }
-            .nrow .c-val { flex: 0 0 16.66%; text-align: center; font-size: 0.85rem; font-weight: 600; }
-            .nrow .nchev { width: 16px; height: 16px; border-radius: 3px; background: #f1f5f9; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
-            .nrow .nchev i { font-size: 0.45rem; color: #94a3b8; transition: transform 0.2s; }
-            .nrow .nchev.open { background: var(--o-light); }
-            .nrow .nchev.open i { transform: rotate(90deg); color: var(--o); }
-            .nrow .nnum { font-family: SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.85rem; color: #334155; font-weight: 600; }
-            .nrow .nnum .ph { color: var(--o); font-size: 0.7rem; }
-            .smsp { margin: 0 0.5rem 0.5rem 2rem; border-radius: 8px; border: 1px solid #e2e8f0; display: none; overflow: hidden; background: #fff; }
-            .smsp table { width: 100%; border-collapse: collapse; }
-            .smsp thead th { background: #f8fafc; padding: 0.55rem 1rem; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; border-bottom: 1px solid #e2e8f0; text-align: left; }
-            .smsp thead th:last-child { text-align: right; }
-            .smsp thead th.tc { text-align: center; }
-            .smsp tbody td { padding: 0.7rem 1rem; border-bottom: 1px solid #fafafa; font-size: 0.825rem; color: #334155; vertical-align: top; }
-            .smsp tbody tr:last-child td { border-bottom: none; }
-            .smsp tbody tr:hover { background: var(--o-light); }
-            .smsp .cli-tag { display: inline-block; background: linear-gradient(135deg, var(--o-light), #fef3c7); color: #92400e; font-weight: 700; font-size: 0.75rem; padding: 0.25rem 0.65rem; border-radius: 6px; border: 1px solid #fde68a; }
-            .smsp .msg-text { line-height: 1.5; color: #475569; max-width: 420px; word-break: break-word; }
-            .smsp .msg-text::first-letter { font-weight: 600; }
-            .smsp .time-cell { color: #94a3b8; font-size: 0.8rem; text-align: center; font-variant-numeric: tabular-nums; }
-            .smsp .rev-cell { text-align: right; font-weight: 700; }
-            .smsp .rev-paid { color: var(--g); }
-            .smsp .rev-unpaid { display: inline-block; background: #f1f5f9; color: #94a3b8; font-size: 0.7rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 20px; }
-            @media (max-width: 768px) {
-                .stat-strip { flex-wrap: wrap; }
-                .stat-item { flex: 1 0 45%; }
-                .rng .inner, .nrow { flex-wrap: wrap; }
-                .rng .c-name, .nrow .c-name { flex: 0 0 100%; margin-bottom: 0.4rem; }
-                .rng .c-val, .nrow .c-val { flex: 0 0 25%; font-size: 0.8rem; }
-            }
-            .datepicker { background: #1a1f2e; border: 1px solid #2d3348; color: white; padding: 0.4rem; border-radius: 8px; width: 100%; }
-            .btn-warning { background: #ffc107; border-color: #ffc107; color: #212529; }
-            .btn-warning:hover { background: #e0a800; border-color: #e0a800; }
-            .card { background: rgba(15, 20, 30, 0.7); backdrop-filter: blur(8px); border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); overflow: hidden; margin-bottom: 1rem; }
-            .card-header { background: transparent; border-bottom: 1px solid rgba(255,255,255,0.1); padding: 1rem; }
-            .form-label { color: #cbd5e1; font-size: 0.8rem; margin-bottom: 0.25rem; display: block; }
-        </style>
-
-        <script>
-            // IVAS toggling functions (adapted to work with our proxy)
-            function GetSMS() {
-                var f = new FormData();
-                f.append('from', $('#start_date').val());
-                f.append('to', $('#end_date').val());
-                $.ajax({
-                    url: "/api/getsms",
-                    type: 'post',
-                    dataType: 'html',
-                    processData: false,
-                    contentType: false,
-                    data: f,
-                    beforeSend: function() {
-                        $('#ResultCDR').html('<div style="text-align:center;padding:3rem;"><div class="spinner-border" style="color:var(--o);width:2rem;height:2rem;" role="status"></div><p style="margin-top:1rem;color:var(--slate);font-size:0.85rem;">Loading your SMS data...</p></div>');
-                    },
-                    success: function(r) {
-                        $('#ResultCDR').html(r);
-                        attachToggleEvents();
-                        // Also update stats if the response contains them
-                        updateStatsFromHTML(r);
-                    },
-                    error: function() {
-                        $('#ResultCDR').html('<div class="sms-empty"><div class="icon" style="background:#fef2f2;"><i class="fas fa-exclamation-triangle" style="color:var(--r);"></i></div><p style="color:var(--r);">Something went wrong. Please try again.</p></div>');
-                    }
-                });
-            }
-
-            function updateStatsFromHTML(html) {
-                // Try to extract stats from the returned HTML (they are in the same structure)
-                var $temp = $('<div>').html(html);
-                var countSMS = $temp.find('#CountSMS').text() || '0';
-                var paidSMS = $temp.find('#PaidSMS').text() || '0';
-                var unpaidSMS = $temp.find('#UnpaidSMS').text() || '0';
-                var revenueSMS = $temp.find('#RevenueSMS').text() || '$0.00';
-                $('#CountSMS').text(countSMS);
-                $('#PaidSMS').text(paidSMS);
-                $('#UnpaidSMS').text(unpaidSMS);
-                $('#RevenueSMS').text(revenueSMS);
-            }
-
-            function attachToggleEvents() {
-                $('.rng').off('click').on('click', function(e) {
-                    var rangeSpan = $(this).find('.rname').text().trim();
-                    var rangeId = rangeSpan.replace(/[^a-zA-Z0-9]/g, '_');
-                    toggleRange(rangeId, rangeSpan);
-                });
-                $('.nrow').off('click').on('click', function(e) {
-                    var phoneNumber = $(this).find('.nnum').text().trim();
-                    var range = $(this).closest('.sub').data('range');
-                    toggleNumber(phoneNumber, range);
-                });
-            }
-
-            function toggleRange(rangeId, rangeName) {
-                var sub = $('#sub_' + rangeId);
-                if (sub.is(':visible')) {
-                    sub.slideUp(200);
-                    $('.chevron[data-range="' + rangeId + '"]').removeClass('open');
-                } else {
-                    sub.slideDown(200);
-                    $('.chevron[data-range="' + rangeId + '"]').addClass('open');
-                }
-            }
-
-            function toggleNumber(phoneNumber, range) {
-                var smsPanel = $('#sms_' + phoneNumber.replace(/[^0-9]/g, ''));
-                if (smsPanel.is(':visible')) {
-                    smsPanel.slideUp(200);
-                    $('.nchev[data-number="' + phoneNumber + '"]').removeClass('open');
-                } else {
-                    smsPanel.slideDown(200);
-                    $('.nchev[data-number="' + phoneNumber + '"]').addClass('open');
-                }
-            }
-
-            $(document).ready(function() {
-                $('.datepicker').datepicker({ format: 'yyyy-mm-dd', autoclose: true, todayHighlight: true });
-                var today = new Date().toISOString().split('T')[0];
-                $('#start_date').val(today);
-                $('#end_date').val(today);
-            });
-        </script>
-    </div>
-
-    <!-- Live SMS Tab -->
-    <div id="tab-live" class="tab-pane">
-        <div class="stats-grid" id="live-stats"></div>
-        <div class="section-card">
-            <div class="section-header"><span class="section-title">📱 Active Numbers</span></div>
-            <div id="live-numbers-grid" class="numbers-grid" style="padding: 0.8rem;"></div>
-        </div>
-        <div class="section-card">
-            <div class="section-header"><span class="section-title">📋 SID Activity (Live OTPs)</span></div>
-            <div class="table-wrapper"><table><thead><tr><th>SID</th><th>Paid</th><th>Limit</th><th>Message Content</th></tr></thead><tbody id="sid-body"></tbody></table></div>
-        </div>
-    </div>
-
-    <!-- Numbers Tab -->
-    <div id="tab-numbers" class="tab-pane">
-        <div class="section-card">
-            <div class="section-header">
-                <span class="section-title">📱 My Virtual Numbers</span>
-                <input type="text" id="num-search" placeholder="Filter numbers..." style="background: #1a1f2e; border: 1px solid #2d3348; padding: 0.4rem 0.8rem; border-radius: 20px; width: 180px;">
-                <span id="num-count" class="badge">0</span>
+            <div class="sms-body" id="ResultCDR">
+                <div class="sms-empty">Select a date range and click "Get SMS" to load records.</div>
             </div>
-            <div id="numbers-grid" class="numbers-grid"></div>
         </div>
-    </div>
-</div>
-
-<!-- Admin Modal -->
-<div id="admin-modal" class="modal">
-    <div class="modal-content">
-        <button class="close-btn" id="close-modal">✖</button>
-        <h3 style="margin-bottom: 1rem;">Admin Panel</h3>
-        <div id="admin-login-form">
-            <input type="text" id="admin-username" placeholder="Username">
-            <input type="password" id="admin-password" placeholder="Password">
-            <button id="admin-login-btn">Login</button>
-        </div>
-        <div id="admin-panel" style="display: none;">
-            <div><h4>Change Password</h4><input type="password" id="new-pass" placeholder="New password"><button id="change-pass-btn">Update</button></div>
-            <div><h4>Edit Announcement</h4><textarea id="announce-edit" rows="2" placeholder="Announcement message"></textarea><button id="update-announce-btn">Update</button></div>
-            <div><h4>Manage Custom Numbers</h4>
-                <div style="display: flex; gap: 0.5rem;">
-                    <input type="text" id="new-number" placeholder="Number (e.g., +22512345678)" style="flex:2">
-                    <input type="text" id="new-range" placeholder="Range name" style="flex:1">
-                </div>
-                <div style="display: flex; gap: 0.5rem;">
-                    <input type="text" id="new-rate" placeholder="Rate (optional)">
-                    <input type="text" id="new-limit" placeholder="Limit (optional)">
-                </div>
-                <button id="add-number-btn">Add Number</button>
-                <div id="custom-numbers-list" class="admin-number-list"></div>
-            </div>
-            <button id="admin-logout-btn" style="background: #ef4444; margin-top: 1rem;">Logout</button>
-        </div>
-        <div id="admin-msg" style="margin-top: 0.5rem; font-size: 0.8rem;"></div>
     </div>
 </div>
 
 <script>
-    // --- Three.js 3D Background ---
-    const canvas = document.getElementById('bg-canvas');
+    // --- Basic 3D Background ---
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('bg-canvas'), alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    const particlesGeometry = new THREE.BufferGeometry();
-    const particlesCount = 1500;
-    const posArray = new Float32Array(particlesCount * 3);
-    for(let i = 0; i < particlesCount * 3; i += 3) {
-        posArray[i] = (Math.random() - 0.5) * 200;
-        posArray[i+1] = (Math.random() - 0.5) * 100;
-        posArray[i+2] = (Math.random() - 0.5) * 100 - 50;
-    }
-    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-    const particlesMaterial = new THREE.PointsMaterial({ color: 0xf97316, size: 0.15, transparent: true, opacity: 0.5 });
-    const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
-    scene.add(particlesMesh);
-    const geometry = new THREE.TorusKnotGeometry(1.2, 0.3, 100, 16);
-    const material = new THREE.MeshStandardMaterial({ color: 0xf97316, emissive: 0x331100, metalness: 0.7, roughness: 0.3 });
-    const knot = new THREE.Mesh(geometry, material);
-    scene.add(knot);
-    const ambientLight = new THREE.AmbientLight(0x111122);
-    scene.add(ambientLight);
-    const pointLight = new THREE.PointLight(0xf97316, 0.8);
-    pointLight.position.set(5, 5, 5);
-    scene.add(pointLight);
-    const backLight = new THREE.PointLight(0x2266ff, 0.3);
-    backLight.position.set(-3, 2, -4);
-    scene.add(backLight);
-    camera.position.z = 6;
-    function animate() {
-        requestAnimationFrame(animate);
-        knot.rotation.x += 0.005;
-        knot.rotation.y += 0.01;
-        particlesMesh.rotation.y += 0.0005;
-        renderer.render(scene, camera);
-    }
+    const particles = new THREE.BufferGeometry();
+    const count = 1500;
+    const positions = new Float32Array(count * 3);
+    for(let i=0; i<count*3; i++) { positions[i] = (Math.random() - 0.5) * 15; }
+    particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const material = new THREE.PointsMaterial({color: 0xf97316, size: 0.02, transparent: true, opacity: 0.7});
+    const particleSystem = new THREE.Points(particles, material);
+    scene.add(particleSystem);
+    camera.position.z = 5;
+    const animate = () => { requestAnimationFrame(animate); particleSystem.rotation.y += 0.0003; renderer.render(scene, camera); };
     animate();
     window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
@@ -453,269 +126,92 @@
     });
 
     // --- Dashboard Logic ---
-    let cache = {};
-    const tabs = document.querySelectorAll('.tab-btn');
-    const panes = {
-        dashboard: document.getElementById('tab-dashboard'),
-        otps: document.getElementById('tab-otps'),
-        live: document.getElementById('tab-live'),
-        numbers: document.getElementById('tab-numbers')
-    };
-    let activeTab = 'dashboard';
-    function setActiveTab(tab) {
-        activeTab = tab;
-        Object.keys(panes).forEach(p => panes[p].classList.remove('active'));
-        panes[tab].classList.add('active');
-        tabs.forEach(btn => { if(btn.dataset.tab === tab) btn.classList.add('active'); else btn.classList.remove('active'); });
-    }
-    tabs.forEach(btn => btn.addEventListener('click', () => setActiveTab(btn.dataset.tab)));
+    document.addEventListener('DOMContentLoaded', () => {
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const dashboardError = document.getElementById('dashboard-error');
+        const receivedStatsDiv = document.getElementById('dash-stats-received');
+        const liveStatsDiv = document.getElementById('dash-stats-live');
 
-    // Helper: render number grid with generate OTP button
-    function renderNumbers(numbers) {
-        const grid = document.getElementById('numbers-grid');
-        const countSpan = document.getElementById('num-count');
-        countSpan.innerText = numbers.length;
-        if(!numbers.length) { grid.innerHTML = '<div style="padding: 2rem; text-align: center;">No numbers found</div>'; return; }
-        grid.innerHTML = numbers.map(n => `
-            <div class="number-card" data-number="${n.number}" data-range="${n.range_name}">
-                <div class="number">📱 ${n.number}</div>
-                <div class="range-tag">${n.range_name || 'No range'} ${n.rate ? '· Rate '+n.rate : ''}</div>
-                <button class="btn" style="margin-top: 0.5rem; width: 100%;" onclick="generateOtp('${n.number}', '${n.range_name}')">🔑 Generate OTP</button>
-            </div>
-        `).join('');
-    }
+        const setStatus = (isOk, message = '') => {
+            statusDot.className = isOk ? 'dot' : 'dot off';
+            statusText.innerText = isOk ? 'Connected' : (message || 'Auth Failed');
+            if (!isOk) {
+                dashboardError.textContent = message || 'Could not connect to IVAS. Please check your credentials or cookies.';
+                dashboardError.style.display = 'block';
+            } else {
+                dashboardError.style.display = 'none';
+            }
+        };
 
-    async function generateOtp(number, range) {
-        const today = new Date().toISOString().slice(0,10);
-        try {
-            const res = await fetch('/api/generate-otp', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ number, range, from: today, to: today })
+        const renderStats = (data) => {
+            const received = data.received || {};
+            const live = data.live || {};
+            receivedStatsDiv.innerHTML = `
+                <div class="stat-card"><div class="stat-label">TOTAL SMS</div><div class="stat-value">${received.count_sms || '0'}</div></div>
+                <div class="stat-card"><div class="stat-label">PAID</div><div class="stat-value">${received.paid_sms || '0'}</div></div>
+                <div class="stat-card"><div class="stat-label">UNPAID</div><div class="stat-value">${received.unpaid_sms || '0'}</div></div>
+                <div class="stat-card"><div class="stat-label">REVENUE</div><div class="stat-value">$${received.revenue || '0.00'}</div></div>`;
+            liveStatsDiv.innerHTML = `
+                <div class="stat-card"><div class="stat-label">SMS TODAY</div><div class="stat-value">${live.sms_today || '0'}</div></div>
+                <div class="stat-card"><div class="stat-label">REVENUE</div><div class="stat-value">$${live.revenue || '0.00'}</div></div>`;
+        };
+
+        const fetchDashboardData = async () => {
+            try {
+                const res = await fetch('/api/all');
+                if (!res.ok) {
+                    const errorData = await res.json();
+                    throw new Error(errorData.error || `Server returned status ${res.status}`);
+                }
+                const data = await res.json();
+                setStatus(true);
+                renderStats(data);
+            } catch (error) {
+                console.error('Fetch error:', error);
+                setStatus(false, error.message);
+            }
+        };
+
+        // Tabs
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }));
+        
+        // Datepicker and Get SMS Button
+        $('.form-control').datepicker({ format: 'yyyy-mm-dd', autoclose: true, todayHighlight: true });
+        const today = new Date().toISOString().split('T')[0];
+        $('#start_date, #end_date').val(today);
+
+        $('#getsms-btn').on('click', function() {
+            const btn = $(this);
+            const resultDiv = $('#ResultCDR');
+            const formData = new FormData();
+            formData.append('from', $('#start_date').val());
+            formData.append('to', $('#end_date').val());
+            
+            btn.prop('disabled', true).text('Loading...');
+            resultDiv.html('<div class="sms-empty">Fetching data from IVAS...</div>');
+
+            $.ajax({
+                url: "/api/getsms",
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: (response) => resultDiv.html(response),
+                error: (xhr) => resultDiv.html(`<div class="sms-empty" style="color:#ef4444;">${xhr.responseText || 'Request failed.'}</div>`),
+                complete: () => btn.prop('disabled', false).text('Get SMS')
             });
-            const data = await res.json();
-            if(data.error) alert('Error: '+data.error);
-            else alert(`OTP for ${number}:\n${data.otp || 'No OTP found'}`);
-        } catch(e) { alert('Network error'); }
-    }
-
-    async function fetchAll() {
-        try {
-            const res = await fetch('/api/all');
-            const data = await res.json();
-            if(data.error) { setStatus(false); return; }
-            cache = data;
-            setStatus(true);
-            renderDashboard(data);
-            renderLive(data.live);
-            const numbersRes = await fetch('/api/numbers');
-            const numbersData = await numbersRes.json();
-            if(!numbersData.error) renderNumbers(numbersData.numbers);
-        } catch(e) { setStatus(false); console.error(e); }
-    }
-
-    function setStatus(ok) {
-        const dot = document.getElementById('status-dot');
-        const text = document.getElementById('status-text');
-        if(ok) { dot.className = 'dot'; text.innerText = 'Connected'; }
-        else { dot.className = 'dot off'; text.innerText = 'Auth failed'; }
-    }
-
-    function renderDashboard(data) {
-        const r = data.received || {};
-        const live = data.live || {};
-        const statsDiv = document.getElementById('dash-stats');
-        statsDiv.innerHTML = `
-            <div class="stat-card"><div class="stat-label">TOTAL SMS</div><div class="stat-value">${r.count_sms||'0'}</div></div>
-            <div class="stat-card"><div class="stat-label">PAID</div><div class="stat-value">${r.paid_sms||'0'}</div></div>
-            <div class="stat-card"><div class="stat-label">UNPAID</div><div class="stat-value">${r.unpaid_sms||'0'}</div></div>
-            <div class="stat-card"><div class="stat-label">REVENUE (USD)</div><div class="stat-value">$${r.revenue||'0'}</div></div>
-            <div class="stat-card"><div class="stat-label">LIVE TODAY</div><div class="stat-value">${live.sms_today||'0'}</div></div>
-            <div class="stat-card"><div class="stat-label">MY NUMBERS</div><div class="stat-value">${(data.numbers||[]).length}</div></div>
-        `;
-        const details = r.sms_details || [];
-        document.getElementById('dash-range-count').innerText = details.length + ' ranges';
-        const rangeBody = document.getElementById('dash-range-body');
-        if(!details.length) rangeBody.innerHTML = '<tr><td colspan="5">No data</td></tr>';
-        else rangeBody.innerHTML = details.map(d => `<tr><td>${d.range}</td><td>${d.count}</td><td>${d.paid}</td><td>${d.unpaid}</td><td>$${d.revenue}</td></tr>`).join('');
-        const liveNumbers = live.numbers || [];
-        document.getElementById('dash-live-count').innerText = liveNumbers.length;
-        const liveDiv = document.getElementById('dash-live-numbers');
-        liveDiv.innerHTML = liveNumbers.map(n => `<div class="number-card"><div class="number">📱 ${n}</div></div>`).join('') || '<div>No live numbers</div>';
-    }
-
-    async function renderLive(live) {
-        const statsDiv = document.getElementById('live-stats');
-        const s = live.stats || {};
-        statsDiv.innerHTML = `
-            <div class="stat-card"><div class="stat-label">Total Live</div><div class="stat-value">${s.total||'0'}</div></div>
-            <div class="stat-card"><div class="stat-label">Paid</div><div class="stat-value">${s.paid||'0'}</div></div>
-            <div class="stat-card"><div class="stat-label">Unpaid</div><div class="stat-value">${s.unpaid||'0'}</div></div>
-            <div class="stat-card"><div class="stat-label">Revenue</div><div class="stat-value">$${s.revenue||'0'}</div></div>
-        `;
-        const numbersGrid = document.getElementById('live-numbers-grid');
-        const nums = live.numbers || [];
-        numbersGrid.innerHTML = nums.map(n => `<div class="number-card"><div class="number">📱 ${n}</div></div>`).join('') || '<div>No active numbers</div>';
-        const sidRows = live.sid_rows || [];
-        const sidBody = document.getElementById('sid-body');
-        sidBody.innerHTML = sidRows.map(r => `
-            <tr><td>${r.sid}</td><td>${r.paid||'—'}</td><td>${r.limit||'—'}</td><td class="message-preview">${r.message ? `<span class="otp-chip">${r.message}</span>` : '—'}</td></tr>
-        `).join('') || '<tr><td colspan="4">No SID data</td></tr>';
-    }
-
-    // Announcement
-    async function loadAnnouncement() {
-        try {
-            const res = await fetch('/api/announcements');
-            const data = await res.json();
-            if(data.message) {
-                document.getElementById('announcement-bar').style.display = 'block';
-                document.getElementById('announcement-text').innerText = data.message;
-            } else {
-                document.getElementById('announcement-bar').style.display = 'none';
-            }
-        } catch(e) { console.warn(e); }
-    }
-
-    // Admin Modal
-    const modal = document.getElementById('admin-modal');
-    const adminBtn = document.getElementById('admin-btn');
-    const closeModal = document.getElementById('close-modal');
-    const adminLoginForm = document.getElementById('admin-login-form');
-    const adminPanel = document.getElementById('admin-panel');
-    const adminMsg = document.getElementById('admin-msg');
-
-    function showAdminLoggedIn() {
-        adminLoginForm.style.display = 'none';
-        adminPanel.style.display = 'block';
-        fetch('/api/announcements').then(r => r.json()).then(data => {
-            document.getElementById('announce-edit').value = data.message || '';
         });
-        loadCustomNumbersList();
-    }
-    function showAdminLoggedOut() {
-        adminLoginForm.style.display = 'block';
-        adminPanel.style.display = 'none';
-    }
 
-    async function loadCustomNumbersList() {
-        try {
-            const res = await fetch('/admin/numbers');
-            const data = await res.json();
-            const container = document.getElementById('custom-numbers-list');
-            if(data.numbers && data.numbers.length) {
-                container.innerHTML = data.numbers.map(n => `
-                    <div class="admin-number-item">
-                        <span>${n.number} (${n.range_name || 'Custom'})</span>
-                        <button class="delete-number" data-number="${n.number}">Delete</button>
-                    </div>
-                `).join('');
-                document.querySelectorAll('.delete-number').forEach(btn => {
-                    btn.addEventListener('click', async (e) => {
-                        const number = btn.getAttribute('data-number');
-                        const delRes = await fetch(`/admin/numbers/${encodeURIComponent(number)}`, { method: 'DELETE' });
-                        const delData = await delRes.json();
-                        if(delData.success) {
-                            adminMsg.innerText = `Number ${number} removed.`;
-                            loadCustomNumbersList();
-                            fetchAll();
-                        } else {
-                            adminMsg.innerText = 'Failed to remove number.';
-                        }
-                    });
-                });
-            } else {
-                container.innerHTML = '<div>No custom numbers added.</div>';
-            }
-        } catch(e) { console.error(e); }
-    }
-
-    adminBtn.onclick = () => { modal.style.display = 'flex'; };
-    closeModal.onclick = () => modal.style.display = 'none';
-    window.onclick = (e) => { if(e.target === modal) modal.style.display = 'none'; };
-
-    document.getElementById('admin-login-btn').onclick = async () => {
-        const username = document.getElementById('admin-username').value;
-        const password = document.getElementById('admin-password').value;
-        const res = await fetch('/admin/login', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ username, password })
-        });
-        const data = await res.json();
-        if(data.success) {
-            adminMsg.innerText = 'Login successful';
-            showAdminLoggedIn();
-        } else {
-            adminMsg.innerText = 'Invalid credentials';
-        }
-    };
-    document.getElementById('change-pass-btn').onclick = async () => {
-        const newPass = document.getElementById('new-pass').value;
-        const res = await fetch('/admin/change-password', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ new_password: newPass })
-        });
-        const data = await res.json();
-        adminMsg.innerText = data.success ? 'Password updated' : 'Error';
-    };
-    document.getElementById('update-announce-btn').onclick = async () => {
-        const msg = document.getElementById('announce-edit').value;
-        const res = await fetch('/admin/update-announcement', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ message: msg })
-        });
-        const data = await res.json();
-        if(data.success) {
-            adminMsg.innerText = 'Announcement updated';
-            loadAnnouncement();
-        } else adminMsg.innerText = 'Error';
-    };
-    document.getElementById('admin-logout-btn').onclick = async () => {
-        await fetch('/admin/logout', { method: 'POST' });
-        adminMsg.innerText = 'Logged out';
-        showAdminLoggedOut();
-    };
-    document.getElementById('add-number-btn').onclick = async () => {
-        const number = document.getElementById('new-number').value.trim();
-        const range = document.getElementById('new-range').value.trim() || 'Custom';
-        const rate = document.getElementById('new-rate').value.trim();
-        const limit = document.getElementById('new-limit').value.trim();
-        if(!number) { adminMsg.innerText = 'Number is required'; return; }
-        const res = await fetch('/admin/numbers', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ number, range_name: range, rate, limit })
-        });
-        const data = await res.json();
-        if(data.success) {
-            adminMsg.innerText = `Number ${number} added.`;
-            loadCustomNumbersList();
-            fetchAll();
-            document.getElementById('new-number').value = '';
-            document.getElementById('new-range').value = '';
-            document.getElementById('new-rate').value = '';
-            document.getElementById('new-limit').value = '';
-        } else {
-            adminMsg.innerText = data.error || 'Failed to add number.';
-        }
-    };
-
-    // Initialization
-    document.getElementById('refresh-btn').addEventListener('click', fetchAll);
-    document.getElementById('num-search').addEventListener('input', (e) => {
-        const term = e.target.value.toLowerCase();
-        document.querySelectorAll('#numbers-grid .number-card').forEach(card => {
-            const num = card.querySelector('.number').innerText.toLowerCase();
-            card.style.display = num.includes(term) ? '' : 'none';
-        });
+        // Initial Load
+        fetchDashboardData();
+        setInterval(fetchDashboardData, 60000); // Auto-refresh every 60 seconds
     });
-
-    fetchAll();
-    loadAnnouncement();
-    setActiveTab('dashboard');
 </script>
 </body>
 </html>
