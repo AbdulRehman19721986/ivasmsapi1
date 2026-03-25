@@ -1,8 +1,8 @@
 """
-IVAS SMS Dashboard – Combined Version (Fixed Brotli, Added /api/getsms)
-- Proxy endpoint /api/getsms that returns the exact HTML from IVAS
-- Original /sms API preserved
-- Admin panel, Firebase, custom numbers, etc.
+IVAS SMS Dashboard – Final Version
+- Fixed decompression: only decompress if content starts with gzip magic bytes
+- Proxy endpoint /api/getsms returns the exact HTML from IVAS
+- Admin panel, Firebase, custom numbers, live SMS, etc.
 """
 
 import os, re, json, time, gzip, logging
@@ -24,7 +24,7 @@ IVAS_EMAIL    = os.environ.get('IVAS_EMAIL',    'usa19721986@gmail.com')
 IVAS_PASSWORD = os.environ.get('IVAS_PASSWORD', 'Amin@1972')
 COOKIES_ENV   = os.environ.get('COOKIES_JSON',  '')
 
-# ---------------------- Firebase Helpers (unchanged) ----------------------
+# ---------------------- Firebase Helpers ----------------------
 from firebase_config import firebase, db
 
 def init_firebase_data():
@@ -160,7 +160,7 @@ class IVASClient:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate',
+            'Accept-Encoding': 'gzip, deflate',  # no brotli
             'Connection': 'keep-alive',
             'Upgrade-Insecure-Requests': '1',
             'Sec-Fetch-Dest': 'document',
@@ -171,12 +171,13 @@ class IVASClient:
         })
 
     def _decompress(self, response):
+        """Only decompress if content is actually gzipped (magic bytes)."""
         encoding = response.headers.get('Content-Encoding', '').lower()
         content = response.content
         try:
             if encoding == 'gzip' and content.startswith(b'\x1f\x8b'):
                 content = gzip.decompress(content)
-            # brotli should not appear because we removed it from Accept-Encoding
+            # brotli not expected
             return content.decode('utf-8', errors='replace')
         except Exception as e:
             logger.warning(f"Decompression failed: {e}")
@@ -560,18 +561,16 @@ def get_sms():
         'otp_messages': otp_messages
     })
 
-# ---------------------- NEW: Proxy endpoint for IVAS getsms ----------------------
+# ---------------------- Proxy endpoint for IVAS getsms ----------------------
 @app.route('/api/getsms', methods=['POST'])
 def proxy_getsms():
     """Forward the POST request to IVAS and return the raw HTML response."""
     if not client.ensure_login():
         return jsonify({'error': 'Not authenticated'}), 401
 
-    # Get the data from the frontend (should contain 'from', 'to')
     from_date = request.form.get('from')
     to_date = request.form.get('to')
 
-    # Prepare payload with CSRF token from the session
     payload = {
         'from': from_date,
         'to': to_date,
@@ -595,7 +594,6 @@ def proxy_getsms():
         )
         if resp.status_code != 200:
             return Response(f"Error from IVAS: {resp.status_code}", status=500)
-        # Return the HTML exactly as received
         html = client._decompress(resp)
         return Response(html, mimetype='text/html')
     except Exception as e:
