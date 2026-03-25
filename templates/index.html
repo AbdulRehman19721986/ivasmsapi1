@@ -105,18 +105,231 @@
         </div>
     </div>
 
-    <!-- OTPs Tab -->
-    <div id="tab-otps" class="tab-pane">
-        <div class="stats-grid" id="otp-stats"></div>
-        <div class="section-card">
-            <div class="section-header">
-                <span class="section-title">📅 Date Filter</span>
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <input type="date" id="otp-from">
-                    <input type="date" id="otp-to">
-                    <button class="btn" id="fetch-otps-btn">Get OTPs</button>
+<!-- OTPs Tab (IVAS-style) -->
+<div id="tab-otps" class="tab-pane">
+    <div class="main-container" style="margin: 0; padding: 0;">
+        <div class="page-header">
+            <div class="header-title">
+                <i class="fas fa-chart-bar header-icon"></i>
+                <h1 class="page-title">SMS Received</h1>
+            </div>
+            <div class="breadcrumb-nav">
+                <a href="/">
+                    <i class="fas fa-home"></i>
+                    Dashboard
+                </a>
+                <span class="separator">/</span>
+                <span>SMS Received</span>
+            </div>
+        </div>
+
+        <div class="stat-strip">
+            <div class="stat-item s-count">
+                <div class="stat-num" id="CountSMS">0</div>
+                <div class="stat-lbl">Total SMS</div>
+            </div>
+            <div class="stat-item s-paid">
+                <div class="stat-num" id="PaidSMS">0</div>
+                <div class="stat-lbl">Paid</div>
+            </div>
+            <div class="stat-item s-unpaid">
+                <div class="stat-num" id="UnpaidSMS">0</div>
+                <div class="stat-lbl">Unpaid</div>
+            </div>
+            <div class="stat-item s-rev">
+                <div class="stat-num" id="RevenueSMS">$0.00</div>
+                <div class="stat-lbl">Revenue</div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <div class="row align-items-end">
+                    <div class="col-md-5">
+                        <label class="form-label" for="start_date">Start Date</label>
+                        <input class="form-control datepicker" autocomplete="off" id="start_date" type="text" />
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label" for="end_date">End Date</label>
+                        <input class="form-control datepicker" autocomplete="off" id="end_date" type="text" />
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-warning w-100" onclick="GetSMS()"><i class="fas fa-bolt me-1"></i> Get SMS</button>
+                    </div>
                 </div>
             </div>
+            <div class="card-body p-0">
+                <div class="col-head">
+                    <div style="display:flex;">
+                        <span style="flex:0 0 33.33%;">Range</span>
+                        <span style="flex:0 0 16.66%;text-align:center;">Count</span>
+                        <span style="flex:0 0 16.66%;text-align:center;">Paid</span>
+                        <span style="flex:0 0 16.66%;text-align:center;">Unpaid</span>
+                        <span style="flex:0 0 16.66%;text-align:center;">Revenue</span>
+                    </div>
+                </div>
+                <div class="sms-body" id="ResultCDR">
+                    <div class="sms-empty">
+                        <div class="icon"><i class="fas fa-inbox"></i></div>
+                        <p>Select a date range and click <strong>Get SMS</strong> to load your records.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* IVAS-specific styles (copied from original page) */
+        .stat-strip { display: flex; gap: 1rem; margin-bottom: 1.5rem; }
+        .stat-item { flex: 1; background: #fff; border-radius: 8px; border: 1px solid #e2e8f0; padding: 1rem; text-align: center; position: relative; overflow: hidden; }
+        .stat-item::after { content: ''; position: absolute; bottom: 0; left: 20%; right: 20%; height: 3px; border-radius: 3px 3px 0 0; }
+        .stat-item.s-count::after { background: var(--o); }
+        .stat-item.s-paid::after { background: var(--g); }
+        .stat-item.s-unpaid::after { background: var(--r); }
+        .stat-item.s-rev::after { background: var(--slate); }
+        .stat-num { font-size: 1.6rem; font-weight: 800; line-height: 1; margin-bottom: 0.3rem; }
+        .s-count .stat-num { color: var(--o-dark); }
+        .s-paid .stat-num { color: var(--g); }
+        .s-unpaid .stat-num { color: var(--r); }
+        .s-rev .stat-num { color: var(--dark); }
+        .stat-lbl { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--slate); }
+        .col-head { background: linear-gradient(180deg, #f8fafc, #f1f5f9); padding: 0.7rem 1.5rem; border-bottom: 2px solid #e2e8f0; }
+        .col-head span { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; }
+        .sms-body { min-height: 80px; max-height: 75vh; overflow-y: auto; }
+        .sms-empty { padding: 4rem 2rem; text-align: center; }
+        .sms-empty .icon { width: 56px; height: 56px; border-radius: 50%; background: #f8fafc; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 1rem; }
+        .sms-empty .icon i { font-size: 1.3rem; color: #cbd5e1; }
+        .sms-empty p { color: #94a3b8; font-size: 0.875rem; margin: 0; }
+        .rng { padding: 0 1.5rem; cursor: pointer; transition: background 0.12s; border-bottom: 1px solid #f8fafc; }
+        .rng:hover { background: var(--o-light); }
+        .rng .inner { display: flex; align-items: center; padding: 0.8rem 0; }
+        .rng .c-name { flex: 0 0 33.33%; display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+        .rng .c-val { flex: 0 0 16.66%; text-align: center; font-size: 0.875rem; font-weight: 700; }
+        .rng .c-val.v-count { color: var(--o-dark); }
+        .rng .c-val.v-paid { color: var(--g); }
+        .rng .c-val.v-unpaid { color: var(--r); }
+        .rng .c-val.v-rev { color: var(--dark); }
+        .rng .c-val.v-rev small { font-weight: 400; color: var(--slate); font-size: 0.7rem; }
+        .rng .chevron { width: 18px; height: 18px; border-radius: 4px; background: #f1f5f9; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
+        .rng .chevron i { font-size: 0.5rem; color: #94a3b8; transition: transform 0.2s; }
+        .rng .chevron.open { background: var(--o-light); }
+        .rng .chevron.open i { transform: rotate(90deg); color: var(--o); }
+        .rng .rname { font-weight: 600; font-size: 0.875rem; color: var(--dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sub { background: #fafbfc; margin: 0 1rem 0.5rem 2.5rem; border-radius: 10px; border: 1px solid #f1f5f9; display: none; overflow: hidden; }
+        .nrow { display: flex; align-items: center; padding: 0.6rem 1rem; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.12s; }
+        .nrow:last-child { border-bottom: none; }
+        .nrow:hover { background: #f0f4f8; }
+        .nrow .c-name { flex: 0 0 33.33%; display: flex; align-items: center; gap: 0.4rem; }
+        .nrow .c-val { flex: 0 0 16.66%; text-align: center; font-size: 0.85rem; font-weight: 600; }
+        .nrow .nchev { width: 16px; height: 16px; border-radius: 3px; background: #f1f5f9; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .nrow .nchev i { font-size: 0.45rem; color: #94a3b8; transition: transform 0.2s; }
+        .nrow .nchev.open { background: var(--o-light); }
+        .nrow .nchev.open i { transform: rotate(90deg); color: var(--o); }
+        .nrow .nnum { font-family: SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.85rem; color: #334155; font-weight: 600; }
+        .nrow .nnum .ph { color: var(--o); font-size: 0.7rem; }
+        .smsp { margin: 0 0.5rem 0.5rem 2rem; border-radius: 8px; border: 1px solid #e2e8f0; display: none; overflow: hidden; background: #fff; }
+        .smsp table { width: 100%; border-collapse: collapse; }
+        .smsp thead th { background: #f8fafc; padding: 0.55rem 1rem; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; border-bottom: 1px solid #e2e8f0; text-align: left; }
+        .smsp thead th:last-child { text-align: right; }
+        .smsp thead th.tc { text-align: center; }
+        .smsp tbody td { padding: 0.7rem 1rem; border-bottom: 1px solid #fafafa; font-size: 0.825rem; color: #334155; vertical-align: top; }
+        .smsp tbody tr:last-child td { border-bottom: none; }
+        .smsp tbody tr:hover { background: var(--o-light); }
+        .smsp .cli-tag { display: inline-block; background: linear-gradient(135deg, var(--o-light), #fef3c7); color: #92400e; font-weight: 700; font-size: 0.75rem; padding: 0.25rem 0.65rem; border-radius: 6px; border: 1px solid #fde68a; }
+        .smsp .msg-text { line-height: 1.5; color: #475569; max-width: 420px; word-break: break-word; }
+        .smsp .msg-text::first-letter { font-weight: 600; }
+        .smsp .time-cell { color: #94a3b8; font-size: 0.8rem; text-align: center; font-variant-numeric: tabular-nums; }
+        .smsp .rev-cell { text-align: right; font-weight: 700; }
+        .smsp .rev-paid { color: var(--g); }
+        .smsp .rev-unpaid { display: inline-block; background: #f1f5f9; color: #94a3b8; font-size: 0.7rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 20px; }
+        @media (max-width: 768px) {
+            .stat-strip { flex-wrap: wrap; }
+            .stat-item { flex: 1 0 45%; }
+            .rng .inner, .nrow { flex-wrap: wrap; }
+            .rng .c-name, .nrow .c-name { flex: 0 0 100%; margin-bottom: 0.4rem; }
+            .rng .c-val, .nrow .c-val { flex: 0 0 25%; font-size: 0.8rem; }
+        }
+        .datepicker { background: #1a1f2e; border: 1px solid #2d3348; color: white; padding: 0.4rem; border-radius: 8px; width: 100%; }
+        .btn-warning { background: #ffc107; border-color: #ffc107; color: #212529; }
+        .btn-warning:hover { background: #e0a800; border-color: #e0a800; }
+        .card { background: rgba(15, 20, 30, 0.7); backdrop-filter: blur(8px); border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); overflow: hidden; margin-bottom: 1rem; }
+        .card-header { background: transparent; border-bottom: 1px solid rgba(255,255,255,0.1); padding: 1rem; }
+        .form-label { color: #cbd5e1; font-size: 0.8rem; margin-bottom: 0.25rem; display: block; }
+    </style>
+
+    <script>
+        // IVAS toggling functions (copied and adapted to work with our proxy)
+        function GetSMS() {
+            var f = new FormData();
+            f.append('from', $('#start_date').val());
+            f.append('to', $('#end_date').val());
+            // No need to send _token; backend will add it
+            $.ajax({
+                url: "/api/getsms",
+                type: 'post',
+                dataType: 'html',
+                processData: false,
+                contentType: false,
+                data: f,
+                beforeSend: function() {
+                    $('#ResultCDR').html('<div style="text-align:center;padding:3rem;"><div class="spinner-border" style="color:var(--o);width:2rem;height:2rem;" role="status"></div><p style="margin-top:1rem;color:var(--slate);font-size:0.85rem;">Loading your SMS data...</p></div>');
+                },
+                success: function(r) {
+                    $('#ResultCDR').html(r);
+                    // After inserting, re‑attach event listeners for toggling
+                    attachToggleEvents();
+                },
+                error: function() {
+                    $('#ResultCDR').html('<div class="sms-empty"><div class="icon" style="background:#fef2f2;"><i class="fas fa-exclamation-triangle" style="color:var(--r);"></i></div><p style="color:var(--r);">Something went wrong. Please try again.</p></div>');
+                }
+            });
+        }
+
+        function attachToggleEvents() {
+            // The HTML from IVAS contains spans with onclick="toggleRange(...)"
+            // We'll override those to use our own function that doesn't rely on IVAS's CSRF
+            $('.rng').off('click').on('click', function(e) {
+                var rangeSpan = $(this).find('.rname').text().trim();
+                var rangeId = rangeSpan.replace(/[^a-zA-Z0-9]/g, '_');
+                toggleRange(rangeId, rangeSpan);
+            });
+            $('.nrow').off('click').on('click', function(e) {
+                var phoneNumber = $(this).find('.nnum').text().trim();
+                var range = $(this).closest('.sub').data('range');
+                toggleNumber(phoneNumber, range);
+            });
+        }
+
+        function toggleRange(rangeId, rangeName) {
+            var sub = $('#sub_' + rangeId);
+            if (sub.is(':visible')) {
+                sub.slideUp(200);
+                $('.chevron[data-range="' + rangeId + '"]').removeClass('open');
+            } else {
+                sub.slideDown(200);
+                $('.chevron[data-range="' + rangeId + '"]').addClass('open');
+            }
+        }
+
+        function toggleNumber(phoneNumber, range) {
+            var smsPanel = $('#sms_' + phoneNumber.replace(/[^0-9]/g, ''));
+            if (smsPanel.is(':visible')) {
+                smsPanel.slideUp(200);
+                $('.nchev[data-number="' + phoneNumber + '"]').removeClass('open');
+            } else {
+                smsPanel.slideDown(200);
+                $('.nchev[data-number="' + phoneNumber + '"]').addClass('open');
+            }
+        }
+
+        $(document).ready(function() {
+            $('.datepicker').datepicker({ format: 'yyyy-mm-dd', autoclose: true, todayHighlight: true });
+            var today = new Date().toISOString().split('T')[0];
+            $('#start_date').val(today);
+            $('#end_date').val(today);
+        });
+    </script>
+</div>
             <div class="table-wrapper"><table><thead><tr><th>#</th><th>Number</th><th>Range</th><th>OTP / Message</th><th>Count</th><th>Revenue</th></tr></thead><tbody id="otp-body"></tbody></table></div>
         </div>
         <div class="section-card">
