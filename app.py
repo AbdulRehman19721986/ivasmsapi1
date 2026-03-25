@@ -1,9 +1,10 @@
 """
-IVAS SMS Dashboard – Combined Version
+IVAS SMS Dashboard – Combined Version (Fixed Brotli)
 - Original Arslan-MD API (/sms endpoint)
 - Admin panel with Firebase (custom numbers, announcements)
 - Live SMS dashboard with 3D background
 - Cookie‑based login (preserved)
+- FIXED: removed brotli from Accept-Encoding
 """
 
 import os, re, json, time, gzip, logging
@@ -14,7 +15,6 @@ import cloudscraper
 from requests.exceptions import ConnectionError, Timeout
 from werkzeug.security import generate_password_hash, check_password_hash
 import pyrebase
-import brotli
 
 # ---------------------- Logging ----------------------
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
@@ -151,7 +151,7 @@ def remove_custom_number(number):
         logger.error(f"remove_custom_number failed: {e}")
         return False
 
-# ---------------------- IVAS Client (enhanced) ----------------------
+# ---------------------- IVAS Client (fixed) ----------------------
 class IVASClient:
     def __init__(self):
         self.scraper = cloudscraper.create_scraper(browser={'browser':'chrome','platform':'windows','mobile':False})
@@ -159,11 +159,12 @@ class IVASClient:
         self.logged_in = False
         self.csrf_token = None
 
+        # --- FIX: remove brotli from Accept-Encoding ---
         self.scraper.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate, br',
+            'Accept-Encoding': 'gzip, deflate',   # <-- no br
             'Connection': 'keep-alive',
             'Upgrade-Insecure-Requests': '1',
             'Sec-Fetch-Dest': 'document',
@@ -174,14 +175,13 @@ class IVASClient:
         })
 
     def _decompress(self, response):
-        """Decompress gzip/brotli if present."""
+        """Decompress gzip if present; brotli should not appear now."""
         encoding = response.headers.get('Content-Encoding', '').lower()
         content = response.content
         try:
             if encoding == 'gzip':
                 content = gzip.decompress(content)
-            elif encoding == 'br':
-                content = brotli.decompress(content)
+            # No brotli handling needed because we removed it from headers
             return content.decode('utf-8', errors='replace')
         except Exception as e:
             logger.warning(f"Decompression failed: {e}")
