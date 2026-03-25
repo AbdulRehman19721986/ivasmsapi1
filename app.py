@@ -1,8 +1,8 @@
 """
-IVAS SMS Dashboard – Final Version
-- Fixed decompression: only decompress if content starts with gzip magic bytes
-- Proxy endpoint /api/getsms returns the exact HTML from IVAS
-- Admin panel, Firebase, custom numbers, live SMS, etc.
+IVAS SMS Dashboard – Final Version with Auto-Login
+- Fixed decompression: only decompress if gzip magic bytes present
+- Reliable login using cookies or credentials
+- Proxy endpoint /api/getsms returns IVAS HTML
 """
 
 import os, re, json, time, gzip, logging
@@ -148,7 +148,7 @@ def remove_custom_number(number):
         logger.error(f"remove_custom_number failed: {e}")
         return False
 
-# ---------------------- IVAS Client ----------------------
+# ---------------------- IVAS Client with robust login ----------------------
 class IVASClient:
     def __init__(self):
         self.scraper = cloudscraper.create_scraper(browser={'browser':'chrome','platform':'windows','mobile':False})
@@ -156,11 +156,12 @@ class IVASClient:
         self.logged_in = False
         self.csrf_token = None
 
+        # Set headers (without brotli to avoid decompression issues)
         self.scraper.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate',  # no brotli
+            'Accept-Encoding': 'gzip, deflate',   # no br
             'Connection': 'keep-alive',
             'Upgrade-Insecure-Requests': '1',
             'Sec-Fetch-Dest': 'document',
@@ -171,13 +172,11 @@ class IVASClient:
         })
 
     def _decompress(self, response):
-        """Only decompress if content is actually gzipped (magic bytes)."""
-        encoding = response.headers.get('Content-Encoding', '').lower()
+        """Only decompress if content is actually gzipped (starts with magic bytes)."""
         content = response.content
         try:
-            if encoding == 'gzip' and content.startswith(b'\x1f\x8b'):
+            if content.startswith(b'\x1f\x8b'):
                 content = gzip.decompress(content)
-            # brotli not expected
             return content.decode('utf-8', errors='replace')
         except Exception as e:
             logger.warning(f"Decompression failed: {e}")
@@ -203,6 +202,7 @@ class IVASClient:
         return {}
 
     def login(self):
+        """Auto login using cookies, fallback to credentials."""
         cookies = self._load_cookies()
         if cookies:
             for name, value in cookies.items():
@@ -212,10 +212,12 @@ class IVASClient:
                 return True
             logger.warning("Cookies stale – trying credentials")
 
+        # Credential login
         logger.info("Attempting credential login...")
         try:
             r1 = self.scraper.get(f"{BASE_URL}/login", timeout=10)
             if r1.status_code != 200:
+                logger.error(f"Login page fetch failed: {r1.status_code}")
                 return False
             html = self._decompress(r1)
             soup = BeautifulSoup(html, 'html.parser')
@@ -233,26 +235,38 @@ class IVASClient:
             r2 = self.scraper.post(f"{BASE_URL}/login", data=data, allow_redirects=True, timeout=10)
             if r2.status_code == 200:
                 return self._verify()
+            else:
+                logger.error(f"Login POST failed: {r2.status_code}")
+                return False
         except Exception as e:
             logger.error(f"Credential login error: {e}")
-        return False
+            return False
 
     def _verify(self):
+        """Check if session is valid and extract CSRF token."""
         try:
             resp = self.scraper.get(f"{BASE_URL}/portal/sms/received", timeout=10)
-            if resp.status_code == 200:
-                html = self._decompress(resp)
-                soup = BeautifulSoup(html, 'html.parser')
-                token_input = soup.find('input', {'name': '_token'})
-                if token_input:
-                    self.csrf_token = token_input['value']
-                    self.logged_in = True
-                    logger.info("✅ Session OK")
-                    return True
-                logger.warning("No _token found")
+            if resp.status_code != 200:
+                logger.warning(f"_verify: status {resp.status_code}")
+                return False
+            html = self._decompress(resp)
+            soup = BeautifulSoup(html, 'html.parser')
+            token_input = soup.find('input', {'name': '_token'})
+            if token_input:
+                self.csrf_token = token_input['value']
+                self.logged_in = True
+                logger.info("✅ Session OK, CSRF token obtained")
+                return True
+            else:
+                # Check if the page is actually the login page
+                if "login" in html.lower() or "email" in html.lower():
+                    logger.warning("_verify: received login page, session invalid")
+                else:
+                    logger.warning("_verify: no _token found")
+                return False
         except Exception as e:
             logger.error(f"_verify error: {e}")
-        return False
+            return False
 
     def ensure_login(self):
         if self.logged_in and self.csrf_token:
