@@ -1,217 +1,516 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>IVAS OTP Dashboard</title>
-    <style>
-        :root { --orange: #f97316; --dark-bg: #0a0c15; --card-bg: rgba(15, 20, 30, 0.7); --text-light: #eef2ff; --text-muted: #94a3b8; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: var(--dark-bg); color: var(--text-light); overflow-x: hidden; min-height: 100vh; }
-        #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
-        .app-container { position: relative; z-index: 10; backdrop-filter: blur(8px); background: rgba(10, 12, 21, 0.65); min-height: 100vh; padding: 1rem; max-width: 1200px; margin: auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; }
-        .logo h1 { font-size: 1.5rem; background: linear-gradient(135deg, var(--orange), #ff9a4a); -webkit-background-clip: text; background-clip: text; color: transparent; }
-        .logo p { font-size: 0.75rem; color: var(--text-muted); }
-        .status-badge { display: flex; align-items: center; gap: 0.5rem; background: var(--card-bg); padding: 0.4rem 0.8rem; border-radius: 20px; }
-        .dot { width: 10px; height: 10px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e; animation: pulse 2s infinite; }
-        .dot.off { background: #ef4444; box-shadow: 0 0 6px #ef4444; animation: pulse-off 2s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-        @keyframes pulse-off { 0%, 100% { transform: scale(1); } 50% { transform: scale(0.8); } }
-        .tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-        .tab-btn { background: rgba(30, 33, 48, 0.7); border: 1px solid transparent; padding: 0.5rem 1rem; border-radius: 20px; color: var(--text-muted); font-weight: 500; cursor: pointer; transition: all 0.2s ease; }
-        .tab-btn.active { background: var(--orange); color: white; border-color: var(--orange); }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-        .stat-card { background: var(--card-bg); backdrop-filter: blur(8px); border-radius: 16px; padding: 1rem; border: 1px solid rgba(255,255,255,0.08); text-align: center; }
-        .stat-value { font-size: 1.75rem; font-weight: 700; color: var(--orange); margin-top: 0.25rem; }
-        .stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); }
-        .tab-pane { display: none; }
-        .tab-pane.active { display: block; }
-        /* OTPs Tab Styles */
-        .card { background: var(--card-bg); backdrop-filter: blur(8px); border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 1rem; }
-        .card-header { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .form-controls { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
-        .form-group { flex: 1; min-width: 150px; }
-        .form-label { color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.25rem; display: block; }
-        .form-control { width: 100%; background: #1a1f2e; border: 1px solid #2d3348; color: white; padding: 0.5rem; border-radius: 8px; }
-        .btn { background: var(--orange); border: none; padding: 0.6rem 1rem; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; width: 100%; }
-        .sms-body { min-height: 150px; padding: 1rem; color: #333; /* Color is for the injected HTML */ }
-        .sms-empty { padding: 3rem 1rem; text-align: center; color: var(--text-muted); }
-        /* Styles for content injected from IVAS */
-        #ResultCDR { color: var(--text-light); }
-        #ResultCDR .card { background: rgba(255,255,255,0.05); color: var(--text-light); }
-        #ResultCDR .item, #ResultCDR .card-body { padding: 0.5rem 1rem; }
-        #ResultCDR p { margin: 0; color: var(--text-light) !important; }
-        #ResultCDR .col-sm-4 { font-weight: bold; color: var(--orange) !important; }
-    </style>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>IVAS OTP Dashboard – Abdul Rehman</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b1120;--bg2:#111827;--bg3:#1a2336;--border:#1f2d45;
+  --accent:#f97316;--a2:#fb923c;--green:#22c55e;--red:#ef4444;
+  --blue:#3b82f6;--yellow:#eab308;--text:#e2e8f0;--muted:#64748b;--r:12px;
+}
+html{font-size:14px}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;display:flex}
+
+/* Sidebar */
+.sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;height:100vh;position:sticky;top:0;overflow-y:auto}
+.logo{padding:20px 16px 14px;border-bottom:1px solid var(--border)}
+.logo h1{font-size:1.1rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--a2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.logo p{font-size:.65rem;color:var(--muted);margin-top:2px}
+.nav{padding:12px 8px;flex:1}
+.nl{font-size:.6rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);padding:10px 10px 4px}
+.ni{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:.83rem;color:var(--muted);transition:all .15s;border:none;background:none;width:100%;text-align:left}
+.ni:hover{background:var(--bg3);color:var(--text)}
+.ni.active{background:rgba(249,115,22,.13);color:var(--accent);font-weight:600}
+.ni-ic{width:16px;text-align:center}
+.sfooter{padding:12px 14px;border-top:1px solid var(--border);font-size:.72rem;color:var(--muted)}
+.sdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:5px;animation:pulse 2s infinite}
+.sdot.off{background:var(--red);animation:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* Main */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);height:52px;padding:0 22px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:20}
+.tb-title{font-weight:700;font-size:.95rem}
+.tb-r{display:flex;align-items:center;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:7px;border:none;cursor:pointer;font-size:.78rem;font-weight:600;transition:all .15s}
+.btn-p{background:linear-gradient(135deg,var(--accent),var(--a2));color:#fff}
+.btn-p:hover{opacity:.85;transform:translateY(-1px)}
+.btn-s{background:var(--bg3);color:var(--text);border:1px solid var(--border)}
+.btn-s:hover{border-color:var(--accent);color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none!important}
+.badge{background:rgba(249,115,22,.14);color:var(--accent);border:1px solid rgba(249,115,22,.3);border-radius:16px;padding:2px 10px;font-size:.7rem;font-weight:700}
+.live-pill{display:inline-flex;align-items:center;gap:4px;background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3);border-radius:16px;padding:2px 9px;font-size:.67rem;font-weight:700;text-transform:uppercase}
+.ldot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 1.4s infinite}
+.toggle{display:flex;align-items:center;gap:6px;font-size:.75rem;color:var(--muted);cursor:pointer}
+.toggle input{accent-color:var(--accent);width:14px;height:14px;cursor:pointer}
+
+/* Content */
+.content{padding:20px 22px;overflow-y:auto;flex:1}
+.page{display:none}.page.active{display:block}
+
+/* Stats grid */
+.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:14px;margin-bottom:18px}
+.sc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;position:relative;overflow:hidden;transition:border-color .2s}
+.sc:hover{border-color:var(--accent)}
+.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--a2));border-radius:var(--r) var(--r) 0 0}
+.sc-icon{font-size:1.25rem;margin-bottom:8px}
+.sc-v{font-size:1.75rem;font-weight:800;color:var(--accent);line-height:1}
+.sc-l{font-size:.67rem;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.5px}
+
+/* Section */
+.sec{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:18px;overflow:hidden}
+.sh{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+.st{font-size:.88rem;font-weight:700;display:flex;align-items:center;gap:7px}
+.sb{padding:0}
+
+/* Table */
+.tw{overflow-x:auto;max-height:460px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+thead{position:sticky;top:0;z-index:2}
+thead tr{background:var(--bg3)}
+th{padding:10px 14px;text-align:left;font-size:.65rem;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);font-weight:600;white-space:nowrap}
+td{padding:10px 14px;border-top:1px solid var(--border);vertical-align:middle}
+tr:hover td{background:rgba(255,255,255,.022)}
+
+/* Chips */
+.otp-chip{display:inline-block;background:rgba(249,115,22,.15);color:var(--accent);border:1px solid rgba(249,115,22,.35);border-radius:5px;padding:2px 8px;font-weight:800;font-family:monospace;font-size:.95rem;letter-spacing:2.5px}
+.num-chip{font-family:monospace;background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:2px 8px;font-size:.83rem}
+.rev-badge{background:rgba(34,197,94,.12);color:var(--green);border-radius:4px;padding:2px 7px;font-size:.73rem;font-weight:700;white-space:nowrap}
+.range-badge{background:rgba(59,130,246,.12);color:var(--blue);border-radius:4px;padding:2px 7px;font-size:.72rem;white-space:nowrap}
+.msg-text{max-width:320px;word-break:break-word;line-height:1.45}
+
+/* Empty / skeleton */
+.empty{text-align:center;padding:46px 20px;color:var(--muted)}
+.empty .ei{font-size:2.4rem;margin-bottom:8px}
+.empty h3{font-size:.88rem;color:var(--text);margin-bottom:3px}
+.empty p{font-size:.75rem}
+.sk{background:linear-gradient(90deg,var(--bg3) 25%,var(--border) 50%,var(--bg3) 75%);background-size:200% 100%;animation:shimmer 1.3s infinite;border-radius:5px;height:12px;width:100%}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+
+/* Search */
+.sbox{background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:6px 11px;color:var(--text);font-size:.78rem;width:185px;outline:none;transition:border-color .2s}
+.sbox:focus{border-color:var(--accent)}
+.sbox::placeholder{color:var(--muted)}
+
+/* Alert */
+.alert{padding:11px 14px;border-radius:8px;font-size:.78rem;margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.ae{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#fca5a5}
+.as{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:#86efac}
+
+/* Date filter */
+.df{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.df input{background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:5px 10px;color:var(--text);font-size:.75rem;outline:none;transition:border-color .2s}
+.df input:focus{border-color:var(--accent)}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px}
+::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+
+/* Numbers list */
+.nl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:10px;padding:16px}
+.nc{background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:12px 14px}
+.nc-num{font-family:monospace;font-size:.9rem;color:var(--accent);font-weight:700}
+.nc-info{font-size:.67rem;color:var(--muted);margin-top:4px}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{display:inline-block;animation:spin .6s linear infinite}
+
+@media(max-width:700px){
+  .sidebar{width:48px}
+  .logo p,.ni span,.nl,.sfooter span{display:none}
+  .logo h1{font-size:.75rem}
+  .ni{justify-content:center;padding:9px}
+  .content{padding:14px}
+  .sg{grid-template-columns:1fr 1fr}
+}
+</style>
 </head>
 <body>
 
-<canvas id="bg-canvas"></canvas>
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="logo">
+    <h1>📡 IVAS SMS</h1>
+    <p>Abdul Rehman · Premium</p>
+  </div>
+  <div class="nav">
+    <div class="nl">Main</div>
+    <button class="ni active" onclick="go('dashboard',this)"><span class="ni-ic">🏠</span><span>Dashboard</span></button>
+    <button class="ni" onclick="go('otps',this)"><span class="ni-ic">🔑</span><span>OTPs / Received</span></button>
+    <button class="ni" onclick="go('live',this)"><span class="ni-ic">⚡</span><span>Live SMS</span></button>
+    <button class="ni" onclick="go('numbers',this)"><span class="ni-ic">📱</span><span>My Numbers</span></button>
+  </div>
+  <div class="sfooter">
+    <span class="sdot" id="sdot"></span><span id="sstatus">Connecting…</span>
+  </div>
+</nav>
 
-<div class="app-container">
-    <div class="header">
-        <div class="logo">
-            <h1>IVAS Dashboard</h1>
-            <p>Real-time SMS &amp; OTP Monitoring</p>
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <span class="tb-title" id="tbtitle">Dashboard</span>
+    <div class="tb-r">
+      <span id="lpill" class="live-pill" style="display:none"><span class="ldot"></span>LIVE</span>
+      <label class="toggle"><input type="checkbox" id="autoR" checked/><span>Auto</span></label>
+      <button class="btn btn-s btn-sm" id="loginBtn" onclick="forceLogin()" style="font-size:.7rem;padding:5px 10px">🔑 Re-Auth</button>
+      <button class="btn btn-p" id="refBtn"><span id="refIco">🔄</span> Refresh</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div id="galert" style="display:none"></div>
+
+    <!-- Dashboard -->
+    <div class="page active" id="page-dashboard">
+      <div class="sg" id="dStats">
+        <div class="sc"><div class="sk" style="height:60px"></div></div>
+        <div class="sc"><div class="sk" style="height:60px"></div></div>
+        <div class="sc"><div class="sk" style="height:60px"></div></div>
+        <div class="sc"><div class="sk" style="height:60px"></div></div>
+      </div>
+      <div class="sec">
+        <div class="sh"><span class="st">🔑 Latest OTPs Received</span><span class="badge" id="dOtpCnt">–</span></div>
+        <div class="sb"><div class="tw"><table>
+          <thead><tr><th>#</th><th>Number</th><th>Range</th><th>OTP / Message</th><th>Revenue</th></tr></thead>
+          <tbody id="dOtpBody"><tr><td colspan="5"><div class="empty"><div class="sk"></div></div></td></tr></tbody>
+        </table></div></div>
+      </div>
+      <div class="sec">
+        <div class="sh"><span class="st">⚡ Live SMS Numbers</span><span class="badge" id="dLiveCnt">–</span></div>
+        <div class="sb"><div id="dLiveNums" style="padding:14px 16px;display:flex;flex-wrap:wrap;gap:8px"></div></div>
+      </div>
+    </div>
+
+    <!-- OTPs Page -->
+    <div class="page" id="page-otps">
+      <div class="sg" id="otpStats"></div>
+      <div class="sec">
+        <div class="sh">
+          <span class="st">🔑 All OTP Messages</span>
+          <div class="df">
+            <input type="date" id="fromDate" title="Start date"/>
+            <input type="date" id="toDate"   title="End date"/>
+            <button class="btn btn-p" onclick="loadOtps()">Get OTPs</button>
+            <input class="sbox" id="otpSearch" placeholder="Search…" oninput="ft('otpBody',this.value)"/>
+            <span class="badge" id="otpTotal">–</span>
+          </div>
         </div>
-        <div class="status-badge">
-            <div class="dot" id="status-dot"></div>
-            <span id="status-text">Connecting...</span>
+        <div class="sb"><div class="tw"><table>
+          <thead><tr><th>#</th><th>Number</th><th>Range</th><th>OTP / Message</th><th>Count</th><th>Revenue</th></tr></thead>
+          <tbody id="otpBody"></tbody>
+        </table></div></div>
+      </div>
+
+      <!-- Per-range breakdown -->
+      <div class="sec" id="rangeBreakSec">
+        <div class="sh"><span class="st">📊 Received Stats by Range</span></div>
+        <div class="sb"><div class="tw"><table>
+          <thead><tr><th>Range</th><th>Count</th><th>Paid</th><th>Unpaid</th><th>Revenue</th></tr></thead>
+          <tbody id="rangeBody"></tbody>
+        </table></div></div>
+      </div>
+    </div>
+
+    <!-- Live SMS Page -->
+    <div class="page" id="page-live">
+      <div class="sg" id="liveStats"></div>
+      <div class="sec">
+        <div class="sh"><span class="st">⚡ Live Numbers Active Today</span><span class="badge" id="liveSmsToday">–</span></div>
+        <div class="sb"><div id="liveNumsGrid" style="padding:14px 16px;display:flex;flex-wrap:wrap;gap:8px"></div></div>
+      </div>
+      <div class="sec">
+        <div class="sh"><span class="st">📋 SID Active Table</span><span class="badge" id="sidCount">–</span></div>
+        <div class="sb"><div class="tw"><table>
+          <thead><tr><th>#</th><th>SID</th><th>Paid</th><th>Limit</th><th>Message</th></tr></thead>
+          <tbody id="sidBody"></tbody>
+        </table></div></div>
+      </div>
+    </div>
+
+    <!-- Numbers Page -->
+    <div class="page" id="page-numbers">
+      <div class="sec">
+        <div class="sh">
+          <span class="st">📱 My Virtual Numbers (1000)</span>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input class="sbox" id="numSearch" placeholder="Filter numbers…" oninput="filterNums(this.value)"/>
+            <span class="badge" id="numCnt">–</span>
+          </div>
         </div>
+        <div class="sb"><div id="numGrid" class="nl-grid"></div></div>
+      </div>
     </div>
 
-    <div class="tabs">
-        <button class="tab-btn active" data-tab="dashboard">📊 Dashboard</button>
-        <button class="tab-btn" data-tab="otps">🔑 OTPs / Received</button>
-    </div>
-
-    <div id="tab-dashboard" class="tab-pane active">
-        <div id="dashboard-error" style="display:none; color: #ef4444; text-align: center; padding: 1rem; background: rgba(239, 68, 68, 0.1); border-radius: 8px; margin-bottom: 1rem;"></div>
-        <h3>Today's Received SMS</h3>
-        <div class="stats-grid" id="dash-stats-received"></div>
-        <h3>Today's Live SMS</h3>
-        <div class="stats-grid" id="dash-stats-live"></div>
-    </div>
-
-    <div id="tab-otps" class="tab-pane">
-        <div class="card">
-            <div class="card-header">
-                <div class="form-controls">
-                    <div class="form-group">
-                        <label class="form-label" for="start_date">Start Date</label>
-                        <input class="form-control" autocomplete="off" id="start_date" type="text" />
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="end_date">End Date</label>
-                        <input class="form-control" autocomplete="off" id="end_date" type="text" />
-                    </div>
-                    <div class="form-group">
-                        <button class="btn" id="getsms-btn">Get SMS</button>
-                    </div>
-                </div>
-            </div>
-            <div class="sms-body" id="ResultCDR">
-                <div class="sms-empty">Select a date range and click "Get SMS" to load records.</div>
-            </div>
-        </div>
-    </div>
-</div>
+  </div><!-- /content -->
+</div><!-- /main -->
 
 <script>
-    // --- Basic 3D Background ---
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('bg-canvas'), alpha: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    const particles = new THREE.BufferGeometry();
-    const count = 1500;
-    const positions = new Float32Array(count * 3);
-    for(let i=0; i<count*3; i++) { positions[i] = (Math.random() - 0.5) * 15; }
-    particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const material = new THREE.PointsMaterial({color: 0xf97316, size: 0.02, transparent: true, opacity: 0.7});
-    const particleSystem = new THREE.Points(particles, material);
-    scene.add(particleSystem);
-    camera.position.z = 5;
-    const animate = () => { requestAnimationFrame(animate); particleSystem.rotation.y += 0.0003; renderer.render(scene, camera); };
-    animate();
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+const $ = id => document.getElementById(id);
+let cache = {};
+let rTimer = null;
+let isLoading = false;
 
-    // --- Dashboard Logic ---
-    document.addEventListener('DOMContentLoaded', () => {
-        const statusDot = document.getElementById('status-dot');
-        const statusText = document.getElementById('status-text');
-        const dashboardError = document.getElementById('dashboard-error');
-        const receivedStatsDiv = document.getElementById('dash-stats-received');
-        const liveStatsDiv = document.getElementById('dash-stats-live');
+// ── Routing ──────────────────────────────────────────────────────────────────
+const titles = {dashboard:'Dashboard',otps:'OTPs / Received',live:'Live SMS',numbers:'My Numbers'};
+function go(name, el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+  $(`page-${name}`).classList.add('active');
+  el.classList.add('active');
+  $('tbtitle').textContent = titles[name]||name;
+}
 
-        const setStatus = (isOk, message = '') => {
-            statusDot.className = isOk ? 'dot' : 'dot off';
-            statusText.innerText = isOk ? 'Connected' : (message || 'Auth Failed');
-            if (!isOk) {
-                dashboardError.textContent = message || 'Could not connect to IVAS. Please check your credentials or cookies.';
-                dashboardError.style.display = 'block';
-            } else {
-                dashboardError.style.display = 'none';
-            }
-        };
+// ── OTP extract ───────────────────────────────────────────────────────────────
+function extractOTP(t){
+  if(!t) return null;
+  const m = t.match(/\b(\d{4,8})\b/);
+  return m ? m[1] : null;
+}
+function renderMsg(t){
+  if(!t) return '<span style="color:var(--muted)">—</span>';
+  const otp = extractOTP(t);
+  const safe = t.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  if(otp){
+    const hi = safe.replace(new RegExp(`\\b${otp}\\b`), `<span class="otp-chip">${otp}</span>`);
+    return `<span class="msg-text">${hi}</span>`;
+  }
+  return `<span class="msg-text">${safe}</span>`;
+}
+function rev(r){
+  if(!r||r==='0'||r==='') return '<span style="color:var(--muted)">—</span>';
+  return `<span class="rev-badge">💰 ${r}</span>`;
+}
 
-        const renderStats = (data) => {
-            const received = data.received || {};
-            const live = data.live || {};
-            receivedStatsDiv.innerHTML = `
-                <div class="stat-card"><div class="stat-label">TOTAL SMS</div><div class="stat-value">${received.count_sms || '0'}</div></div>
-                <div class="stat-card"><div class="stat-label">PAID</div><div class="stat-value">${received.paid_sms || '0'}</div></div>
-                <div class="stat-card"><div class="stat-label">UNPAID</div><div class="stat-value">${received.unpaid_sms || '0'}</div></div>
-                <div class="stat-card"><div class="stat-label">REVENUE</div><div class="stat-value">$${received.revenue || '0.00'}</div></div>`;
-            liveStatsDiv.innerHTML = `
-                <div class="stat-card"><div class="stat-label">SMS TODAY</div><div class="stat-value">${live.sms_today || '0'}</div></div>
-                <div class="stat-card"><div class="stat-label">REVENUE</div><div class="stat-value">$${live.revenue || '0.00'}</div></div>`;
-        };
+// ── Alerts ────────────────────────────────────────────────────────────────────
+function alert2(type, msg){
+  const el = $('galert');
+  el.innerHTML=`<div class="alert a${type[0]}"><span>${type==='error'?'❌':'✅'}</span>${msg}</div>`;
+  el.style.display='block';
+  setTimeout(()=>el.style.display='none',5000);
+}
 
-        const fetchDashboardData = async () => {
-            try {
-                const res = await fetch('/api/all');
-                if (!res.ok) {
-                    const errorData = await res.json();
-                    throw new Error(errorData.error || `Server returned status ${res.status}`);
-                }
-                const data = await res.json();
-                setStatus(true);
-                renderStats(data);
-            } catch (error) {
-                console.error('Fetch error:', error);
-                setStatus(false, error.message);
-            }
-        };
+// ── Loading ───────────────────────────────────────────────────────────────────
+function setLoad(on){
+  isLoading=on;
+  $('refBtn').disabled=on;
+  $('refIco').className=on?'spin':'';
+  $('refIco').textContent='🔄';
+}
 
-        // Tabs
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => {
-            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-            document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-        }));
-        
-        // Datepicker and Get SMS Button
-        $('.form-control').datepicker({ format: 'yyyy-mm-dd', autoclose: true, todayHighlight: true });
-        const today = new Date().toISOString().split('T')[0];
-        $('#start_date, #end_date').val(today);
+// ── Status bar ────────────────────────────────────────────────────────────────
+function setStatus(ok){
+  $('sdot').className='sdot'+(ok?'':' off');
+  $('sstatus').textContent=ok?'Connected':'Auth failed';
+  $('lpill').style.display=ok?'inline-flex':'none';
+}
 
-        $('#getsms-btn').on('click', function() {
-            const btn = $(this);
-            const resultDiv = $('#ResultCDR');
-            const formData = new FormData();
-            formData.append('from', $('#start_date').val());
-            formData.append('to', $('#end_date').val());
-            
-            btn.prop('disabled', true).text('Loading...');
-            resultDiv.html('<div class="sms-empty">Fetching data from IVAS...</div>');
+// ── Filter table ──────────────────────────────────────────────────────────────
+function ft(tbodyId, q){
+  document.querySelectorAll(`#${tbodyId} tr`).forEach(r=>{
+    r.style.display=r.textContent.toLowerCase().includes(q.toLowerCase())?'':'none';
+  });
+}
+function filterNums(q){
+  document.querySelectorAll('#numGrid .nc').forEach(c=>{
+    c.style.display=c.textContent.toLowerCase().includes(q.toLowerCase())?'':'none';
+  });
+}
 
-            $.ajax({
-                url: "/api/getsms",
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: (response) => resultDiv.html(response),
-                error: (xhr) => resultDiv.html(`<div class="sms-empty" style="color:#ef4444;">${xhr.responseText || 'Request failed.'}</div>`),
-                complete: () => btn.prop('disabled', false).text('Get SMS')
-            });
-        });
+// ── Stat card ─────────────────────────────────────────────────────────────────
+function sc(icon,val,label){
+  return `<div class="sc"><div class="sc-icon">${icon}</div><div class="sc-v">${val||'0'}</div><div class="sc-l">${label}</div></div>`;
+}
 
-        // Initial Load
-        fetchDashboardData();
-        setInterval(fetchDashboardData, 60000); // Auto-refresh every 60 seconds
-    });
+// ── Render dashboard ──────────────────────────────────────────────────────────
+function renderDash(data){
+  const r = data.received||{};
+  const live = data.live||{};
+  const nums = data.numbers||[];
+  $('dStats').innerHTML =
+    sc('🔑', r.count_sms||r.count||'0','Total OTPs Today') +
+    sc('💰', r.revenue||'0','Revenue USD') +
+    sc('⚡', live.stats?.total||'0','Live Today') +
+    sc('📱', nums.length,'My Numbers');
+
+  // OTP table (show top 20 from sms_details → limited display)
+  const details = r.sms_details||[];
+  $('dOtpCnt').textContent = details.length + ' ranges';
+  if(!details.length){
+    $('dOtpBody').innerHTML=`<tr><td colspan="5"><div class="empty"><div class="ei">📭</div><h3>No OTPs today</h3><p>Try the OTPs page with a date range</p></div></td></tr>`;
+  } else {
+    $('dOtpBody').innerHTML = details.map((d,i)=>`
+      <tr>
+        <td style="color:var(--muted)">${i+1}</td>
+        <td><span class="num-chip">📱 ${d.range}</span></td>
+        <td><span class="range-badge">Range</span></td>
+        <td>Count: <b>${d.count}</b> · Paid: <b style="color:var(--green)">${d.paid}</b></td>
+        <td>${rev(d.revenue)}</td>
+      </tr>`).join('');
+  }
+
+  // Live numbers
+  const lnums = live.numbers||[];
+  $('dLiveCnt').textContent = lnums.length;
+  $('dLiveNums').innerHTML = lnums.length
+    ? lnums.map(n=>`<span class="num-chip">📱 ${n}</span>`).join('')
+    : '<span style="color:var(--muted);font-size:.8rem">No live numbers right now</span>';
+}
+
+// ── Render Live page ──────────────────────────────────────────────────────────
+function renderLive(live){
+  if(!live) return;
+  const s = live.stats||{};
+  $('liveStats').innerHTML =
+    sc('📨', s.total,'Total Live') +
+    sc('✅', s.paid,'Paid') +
+    sc('⏳', s.unpaid,'Unpaid') +
+    sc('💰', s.revenue,'Revenue USD');
+
+  $('liveSmsToday').textContent = live.sms_today||s.total||'0';
+
+  const nums = live.numbers||[];
+  $('liveNumsGrid').innerHTML = nums.length
+    ? nums.map(n=>`<span class="num-chip" style="font-size:.85rem">📱 ${n}</span>`).join('')
+    : '<span style="color:var(--muted);font-size:.8rem">No numbers detected</span>';
+
+  const rows = live.sid_rows||[];
+  $('sidCount').textContent = rows.length;
+  $('sidBody').innerHTML = rows.length
+    ? rows.map((r,i)=>`
+        <tr>
+          <td style="color:var(--muted)">${i+1}</td>
+          <td><span class="num-chip">${r.sid}</span></td>
+          <td>${r.paid||'—'}</td>
+          <td>${r.limit||'—'}</td>
+          <td>${renderMsg(r.message)}</td>
+        </tr>`).join('')
+    : `<tr><td colspan="5"><div class="empty"><div class="ei">📡</div><h3>No SID rows</h3><p>Live SMS page may use JS rendering</p></div></td></tr>`;
+}
+
+// ── Render Numbers page ───────────────────────────────────────────────────────
+function renderNumbers(numbers){
+  if(!numbers) return;
+  $('numCnt').textContent = numbers.length;
+  if(!numbers.length){
+    $('numGrid').innerHTML=`<div style="padding:40px;color:var(--muted);text-align:center">No numbers found</div>`;
+    return;
+  }
+  $('numGrid').innerHTML = numbers.map(n=>`
+    <div class="nc">
+      <div class="nc-num">📱 ${n.number}</div>
+      <div class="nc-info">${n.range_name||''} ${n.rate?'· Rate: '+n.rate:''}</div>
+    </div>`).join('');
+}
+
+// ── Load OTPs (full 3-step) ───────────────────────────────────────────────────
+async function loadOtps(){
+  const fd = $('fromDate').value;
+  const td = $('toDate').value;
+  $('otpBody').innerHTML=`<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--muted)">🔄 Fetching OTPs… this may take 10–30s</td></tr>`;
+  $('otpTotal').textContent='…';
+  try{
+    const params = new URLSearchParams();
+    if(fd) params.set('from', fd);
+    if(td) params.set('to',   td);
+    params.set('limit','100');
+    const res  = await fetch('/api/otps?' + params);
+    const data = await res.json();
+    if(data.error){ alert2('error', data.error); return; }
+
+    // Stats
+    const s = data.stats||{};
+    $('otpStats').innerHTML =
+      sc('📬', s.count_sms,'Total SMS') +
+      sc('✅', s.paid_sms,'Paid') +
+      sc('⏳', s.unpaid_sms,'Unpaid') +
+      sc('💰', s.revenue,'Revenue USD');
+
+    // Range breakdown
+    const details = s.sms_details||[];
+    $('rangeBody').innerHTML = details.length
+      ? details.map(d=>`
+          <tr>
+            <td><span class="range-badge">${d.range}</span></td>
+            <td><b>${d.count}</b></td>
+            <td style="color:var(--green)">${d.paid}</td>
+            <td style="color:var(--red)">${d.unpaid}</td>
+            <td>${rev(d.revenue)}</td>
+          </tr>`).join('')
+      : `<tr><td colspan="5" style="color:var(--muted);padding:20px">No range data</td></tr>`;
+
+    // OTP messages
+    const otps = data.otps||[];
+    $('otpTotal').textContent = otps.length;
+    $('otpBody').innerHTML = otps.length
+      ? otps.map((o,i)=>`
+          <tr>
+            <td style="color:var(--muted)">${i+1}</td>
+            <td><span class="num-chip">📱 ${o.phone_number}</span></td>
+            <td><span class="range-badge">${o.range}</span></td>
+            <td>${renderMsg(o.otp_message)}</td>
+            <td><b>${o.count||'1'}</b></td>
+            <td>${rev(o.revenue)}</td>
+          </tr>`).join('')
+      : `<tr><td colspan="6"><div class="empty"><div class="ei">📭</div><h3>No OTP messages found</h3><p>Try a different date range</p></div></td></tr>`;
+
+  } catch(e){ alert2('error','Network error: '+e.message); }
+}
+
+// ── Main fetch ────────────────────────────────────────────────────────────────
+async function fetchAll(){
+  if(isLoading) return;
+  setLoad(true);
+  try{
+    const res  = await fetch('/api/all');
+    const data = await res.json();
+    if(data.error){ alert2('error', data.error); setStatus(false); return; }
+    cache = data;
+    setStatus(true);
+    renderDash(data);
+    renderLive(data.live);
+    renderNumbers(data.numbers);
+  } catch(e){
+    alert2('error','Network: '+e.message);
+    setStatus(false);
+  } finally { setLoad(false); }
+}
+
+async function forceLogin(){
+  const btn = $('loginBtn');
+  btn.disabled=true; btn.textContent='⏳ …';
+  try{
+    const r = await fetch('/api/refresh',{method:'POST'});
+    const d = await r.json();
+    if(d.success){ alert2('success','Re-authenticated!'); fetchAll(); }
+    else alert2('error','Re-auth failed – check credentials/cookies');
+  } catch(e){ alert2('error',e.message); }
+  btn.disabled=false; btn.textContent='🔑 Re-Auth';
+}
+
+// ── Date defaults ──────────────────────────────────────────────────────────────
+(function(){
+  const today = new Date().toISOString().slice(0,10);
+  $('fromDate').value = today;
+  $('toDate').value   = today;
+})();
+
+// ── Auto-refresh ──────────────────────────────────────────────────────────────
+function startAR(){
+  if(rTimer) clearInterval(rTimer);
+  rTimer = setInterval(()=>{ if($('autoR').checked) fetchAll(); }, 15000);
+}
+$('refBtn').addEventListener('click', fetchAll);
+$('autoR').addEventListener('change', e=>{
+  if(e.target.checked) startAR(); else clearInterval(rTimer);
+});
+
+fetchAll();
+startAR();
 </script>
 </body>
 </html>
