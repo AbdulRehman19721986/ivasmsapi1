@@ -1,16 +1,14 @@
 """
-IVAS SMS Dashboard – Combined Version (Fixed Brotli)
-- Original Arslan-MD API (/sms endpoint)
-- Admin panel with Firebase (custom numbers, announcements)
-- Live SMS dashboard with 3D background
-- Cookie‑based login (preserved)
-- FIXED: removed brotli from Accept-Encoding
+IVAS SMS Dashboard – Combined Version (Fixed Brotli, Added /api/getsms)
+- Proxy endpoint /api/getsms that returns the exact HTML from IVAS
+- Original /sms API preserved
+- Admin panel, Firebase, custom numbers, etc.
 """
 
 import os, re, json, time, gzip, logging
 from datetime import datetime
 from bs4 import BeautifulSoup
-from flask import Flask, request, jsonify, render_template, session
+from flask import Flask, request, jsonify, render_template, session, Response
 import cloudscraper
 from requests.exceptions import ConnectionError, Timeout
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -107,7 +105,6 @@ def verify_admin(username, password):
     except Exception as e:
         logger.error(f"Firebase verify_admin failed: {e}")
 
-    # Fallback hardcoded (redx / redx)
     if username == "redx" and password == "redx":
         logger.warning("Using hardcoded admin credentials (fallback).")
         return True
@@ -151,7 +148,7 @@ def remove_custom_number(number):
         logger.error(f"remove_custom_number failed: {e}")
         return False
 
-# ---------------------- IVAS Client (fixed) ----------------------
+# ---------------------- IVAS Client ----------------------
 class IVASClient:
     def __init__(self):
         self.scraper = cloudscraper.create_scraper(browser={'browser':'chrome','platform':'windows','mobile':False})
@@ -159,12 +156,11 @@ class IVASClient:
         self.logged_in = False
         self.csrf_token = None
 
-        # --- FIX: remove brotli from Accept-Encoding ---
         self.scraper.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate',   # <-- no br
+            'Accept-Encoding': 'gzip, deflate',
             'Connection': 'keep-alive',
             'Upgrade-Insecure-Requests': '1',
             'Sec-Fetch-Dest': 'document',
@@ -175,13 +171,12 @@ class IVASClient:
         })
 
     def _decompress(self, response):
-        """Decompress gzip if present; brotli should not appear now."""
         encoding = response.headers.get('Content-Encoding', '').lower()
         content = response.content
         try:
-            if encoding == 'gzip':
+            if encoding == 'gzip' and content.startswith(b'\x1f\x8b'):
                 content = gzip.decompress(content)
-            # No brotli handling needed because we removed it from headers
+            # brotli should not appear because we removed it from Accept-Encoding
             return content.decode('utf-8', errors='replace')
         except Exception as e:
             logger.warning(f"Decompression failed: {e}")
@@ -207,7 +202,6 @@ class IVASClient:
         return {}
 
     def login(self):
-        """Login using cookies, fallback to credentials."""
         cookies = self._load_cookies()
         if cookies:
             for name, value in cookies.items():
@@ -217,7 +211,6 @@ class IVASClient:
                 return True
             logger.warning("Cookies stale – trying credentials")
 
-        # Credential login
         logger.info("Attempting credential login...")
         try:
             r1 = self.scraper.get(f"{BASE_URL}/login", timeout=10)
@@ -267,7 +260,6 @@ class IVASClient:
 
     # ---------- Original API methods (preserved) ----------
     def check_otps(self, from_date="", to_date=""):
-        """Step 1: get SMS stats and range details."""
         if not self.ensure_login():
             return None
         try:
@@ -324,7 +316,6 @@ class IVASClient:
             return None
 
     def get_sms_details(self, phone_range, from_date="", to_date=""):
-        """Step 2: get numbers in a range."""
         if not self.ensure_login():
             return []
         try:
@@ -374,7 +365,6 @@ class IVASClient:
             return []
 
     def get_otp_message(self, phone_number, phone_range, from_date="", to_date=""):
-        """Step 3: get OTP message for a specific number."""
         if not self.ensure_login():
             return None
         try:
@@ -410,7 +400,6 @@ class IVASClient:
             return None
 
     def get_all_otp_messages(self, sms_details, from_date="", to_date="", limit=None):
-        """Full OTP collection."""
         if not sms_details:
             return []
         all_otps = []
@@ -435,7 +424,6 @@ class IVASClient:
 
     # ---------- Additional methods for dashboard ----------
     def fetch_numbers(self):
-        """Fetch all numbers from IVAS."""
         if not self.ensure_login():
             return None
         try:
@@ -467,7 +455,6 @@ class IVASClient:
             return None
 
     def fetch_live_sms(self):
-        """Parse live SMS page."""
         if not self.ensure_login():
             return None
         try:
@@ -485,11 +472,9 @@ class IVASClient:
                 'unpaid': _t('UnpaidSMS'),
                 'revenue': _t('RevenueSMS')
             }
-            # Numbers
             nums = set()
             for m in re.finditer(r'\b(\d{10,})\b', html):
                 nums.add(m.group(1))
-            # SID rows
             sid_rows = []
             for table in soup.find_all('table'):
                 for row in table.find_all('tr'):
@@ -527,7 +512,6 @@ else:
 # ---------------------- Original Arslan-MD API Endpoint ----------------------
 @app.route('/sms')
 def get_sms():
-    """Original /sms endpoint - returns OTP messages in JSON."""
     date_str = request.args.get('date')
     limit = request.args.get('limit')
     to_date = request.args.get('to_date', '')
@@ -575,6 +559,48 @@ def get_sms():
         },
         'otp_messages': otp_messages
     })
+
+# ---------------------- NEW: Proxy endpoint for IVAS getsms ----------------------
+@app.route('/api/getsms', methods=['POST'])
+def proxy_getsms():
+    """Forward the POST request to IVAS and return the raw HTML response."""
+    if not client.ensure_login():
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    # Get the data from the frontend (should contain 'from', 'to')
+    from_date = request.form.get('from')
+    to_date = request.form.get('to')
+
+    # Prepare payload with CSRF token from the session
+    payload = {
+        'from': from_date,
+        'to': to_date,
+        '_token': client.csrf_token
+    }
+
+    headers = {
+        'Accept': 'text/html, */*; q=0.01',
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'X-Requested-With': 'XMLHttpRequest',
+        'Origin': BASE_URL,
+        'Referer': f"{BASE_URL}/portal/sms/received"
+    }
+
+    try:
+        resp = client.scraper.post(
+            f"{BASE_URL}/portal/sms/received/getsms",
+            data=payload,
+            headers=headers,
+            timeout=10
+        )
+        if resp.status_code != 200:
+            return Response(f"Error from IVAS: {resp.status_code}", status=500)
+        # Return the HTML exactly as received
+        html = client._decompress(resp)
+        return Response(html, mimetype='text/html')
+    except Exception as e:
+        logger.error(f"Proxy getsms error: {e}")
+        return Response(f"Proxy error: {e}", status=500)
 
 # ---------------------- Dashboard Routes ----------------------
 @app.route('/')
